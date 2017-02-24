@@ -23,6 +23,7 @@ class Turn:
             for action in character.action_queue:
                 if character.can_play(action):
                     self.add_action(action)
+                    character.set_action_played(action, game)
                     game.log(ActionPlayedEvent(action))
 
         for phase, actions in self.actions.items():

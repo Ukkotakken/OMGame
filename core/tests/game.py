@@ -28,6 +28,26 @@ class GameBasicsTest(unittest.TestCase):
             self.assertEquals(e.ability, BaseAttack)
             self.assertTrue(isinstance(e.turn, DayTurn))
 
+    def testAttack_failCooldown(self):
+        self.next_turn_skip_events()
+        self.assertEqual(self.bob.health, 3)
+        self.alice.attack(self.bob)
+        self.alice.attack(self.bob)
+        self.game.end_turn()
+        self.assertEqual(self.bob.health, 2)
+
+        new_events = self.game.pop_new_events()
+        attack_action = BaseAttack(caller=self.alice, executor=self.alice, target=self.bob)
+        expected_events = [
+            ActionPlayedEvent(attack_action),
+            DamageEvent(
+                character=self.bob,
+                strength=1,
+                type=DamageType.PHISICAL,
+                action=attack_action)]
+        self.assertEventsEqual(new_events, expected_events)
+
+
     def testVote_failNight(self):
         self.next_turn_skip_events()
         try:
