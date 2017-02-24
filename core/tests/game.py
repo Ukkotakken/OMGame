@@ -1,102 +1,168 @@
 import unittest
+from collections import defaultdict
+from unittest.mock import MagicMock
 
 from core.game.action.common import Vote, BaseAttack
 from core.game.characters.common import Character
-from core.game.common import State
+from core.game.common import State, DamageType
+from core.game.events.common import TurnStartEvent, TurnEndEvent, VoteEvent, ImprisonEvent, DamageEvent, DeathEvent, \
+    ActionPlayedEvent
 from core.game.exceptions import WrongTurnException
 from core.game.game import Game
 from core.game.turn import DayTurn, NightTurn
 
 
-class MockPlayer:
-    def __init__(self, user_id):
-        self.user_id = user_id
-        self.character = None
-
-    def set_character(self, character):
-        self.character = character
-
-
-class MockGameHandler:
-    def send_message(self, text, user_id=None):
-        pass
-
-    def over(self):
-        pass
-
-
 class GameBasicsTest(unittest.TestCase):
     def setUp(self):
         self.chars = [
-            Character(MockPlayer(1)),
-            Character(MockPlayer(2))]
-        self.game = Game(self.chars, MockGameHandler())
+            Character(MagicMock()),
+            Character(MagicMock())]
+        self.alice = self.chars[0]
+        self.bob = self.chars[1]
+        self.game = Game(self.chars, MagicMock())
 
     def testAttack_failDay(self):
         try:
-            self.chars[0].attack(self.chars[1])
+            self.alice.attack(self.bob)
         except WrongTurnException as e:
             self.assertEquals(e.ability, BaseAttack)
             self.assertTrue(isinstance(e.turn, DayTurn))
 
     def testVote_failNight(self):
-        self.game.end_turn()
+        self.next_turn_skip_events()
         try:
-            self.chars[0].vote(self.chars[1])
+            self.alice.vote(self.bob)
         except WrongTurnException as e:
             self.assertEquals(e.ability, Vote)
             self.assertTrue(isinstance(e.turn, NightTurn))
 
     def testAttack(self):
-        self.assertEquals(self.chars[1].health, 3)
+        self.assertEquals(self.bob.health, 3)
+        self.next_turn_skip_events()
+        self.alice.attack(self.bob)
         self.game.end_turn()
-        self.chars[0].attack(self.chars[1])
-        self.game.end_turn()
-        self.assertEquals(self.chars[1].health, 2)
+        self.assertEquals(self.bob.health, 2)
+
+        new_events = self.game.pop_new_events()
+        attack_action = BaseAttack(caller=self.alice, executor=self.alice, target=self.bob)
+        expected_events = [
+            ActionPlayedEvent(attack_action),
+            DamageEvent(
+                character=self.bob,
+                strength=1,
+                type=DamageType.PHISICAL,
+                action=attack_action)]
+        self.assertEventsEqual(new_events, expected_events)
+
 
     def testAttack_kill(self):
-        self.chars[1].health = 1
+        self.bob.health = 1
+        self.next_turn_skip_events()
+        self.alice.attack(self.bob)
         self.game.end_turn()
-        self.chars[0].attack(self.chars[1])
-        self.game.end_turn()
-        self.assertEquals(self.chars[1].health, 0)
-        self.assertEquals(self.chars[1].state, State.DEAD)
+        self.assertEquals(self.bob.health, 0)
+        self.assertEquals(self.bob.state, State.DEAD)
+
+        new_events = self.game.pop_new_events()
+        attack_action = BaseAttack(caller=self.alice, executor=self.alice, target=self.bob)
+        expected_events = [
+            DeathEvent(self.bob),
+            ActionPlayedEvent(attack_action),
+            DamageEvent(
+                character=self.bob,
+                strength=1,
+                type=DamageType.PHISICAL,
+                action=attack_action)]
+        self.assertEventsEqual(new_events, expected_events)
 
     def testAttack_killWin(self):
         # Set sides
-        self.chars[0].sides = {0}
-        self.chars[1].sides = {1}
-        # Wait a day
-        self.game.end_turn()
-        self.game.end_turn()
+        self.alice.sides = {0}
+        self.bob.sides = {1}
         # Kill one of the characters
-        self.chars[1].health = 1
+        self.bob.health = 1
+        self.next_turn_skip_events()
+        self.alice.attack(self.bob)
         self.game.end_turn()
-        self.chars[0].attack(self.chars[1])
-        self.game.end_turn()
-        self.assertEquals(self.chars[1].health, 0)
-        self.assertEquals(self.chars[1].state, State.DEAD)
+        self.assertEquals(self.bob.health, 0)
+        self.assertEquals(self.bob.state, State.DEAD)
+
+        new_events = self.game.pop_new_events()
+        expected_damage_event = DamageEvent(
+            character=self.bob,
+            strength=1,
+            type=DamageType.PHISICAL,
+            action=BaseAttack(caller=self.alice, executor=self.alice, target=self.bob))
+        self.assertEquals(
+            filter_by_class(new_events, DamageEvent),
+            [expected_damage_event])
+        self.assertEquals(
+            filter_by_class(new_events, DeathEvent),
+            [DeathEvent(self.bob)])
+        # self.assertEquals(
+        #    filter_by_class(new_events, VictoryEvent),
+        #    [VictoryEvent(0, [self.alice])])
 
     def testVote_imprison(self):
-        self.assertEquals(self.chars[1].state, State.ALIVE)
-        self.chars[0].vote(self.chars[1])
+        self.assertEquals(self.bob.state, State.ALIVE)
+        self.alice.vote(self.bob)
         self.game.end_turn()
-        self.assertEqual(self.chars[1].state, State.IMPRISONED)
+        self.assertEqual(self.bob.state, State.IMPRISONED)
+
+        vote_action = Vote(caller=self.alice, executor=self.alice, target=self.bob)
+        expected_events = [
+            VoteEvent(vote_action),
+            ActionPlayedEvent(vote_action),
+            ImprisonEvent(self.bob)]
+        self.assertEventsEqual(self.game.pop_new_events(), expected_events)
 
     def testVote_dead(self):
-        self.chars[0].state = State.DEAD
-        self.chars[0].vote(self.chars[1])
+        self.alice.state = State.DEAD
+        self.alice.vote(self.bob)
         self.game.end_turn()
-        self.assertEqual(self.chars[1].state, State.ALIVE)
+        self.assertEqual(self.bob.state, State.ALIVE)
+
+        new_events = self.game.pop_new_events()
+        self.assertEventsEqual(new_events, [])
 
     def testVote_tie(self):
-        self.assertEquals(self.chars[0].state, State.ALIVE)
-        self.assertEquals(self.chars[1].state, State.ALIVE)
-        self.chars[0].vote(self.chars[1])
-        self.chars[1].vote(self.chars[0])
+        self.game.pop_new_events()
+        self.assertEquals(self.alice.state, State.ALIVE)
+        self.assertEquals(self.bob.state, State.ALIVE)
+        self.alice.vote(self.bob)
+        self.bob.vote(self.alice)
         self.game.end_turn()
-        self.assertEquals(self.chars[0].state, State.ALIVE)
-        self.assertEquals(self.chars[1].state, State.ALIVE)
+        self.assertEquals(self.alice.state, State.ALIVE)
+        self.assertEquals(self.bob.state, State.ALIVE)
+
+        new_events = self.game.pop_new_events()
+        vote_actions = [
+            Vote(caller=self.bob, executor=self.bob, target=self.alice),
+            Vote(caller=self.alice, executor=self.alice, target=self.bob)]
+        expected_events = sum([
+                                  [VoteEvent(v), ActionPlayedEvent(v)] for v in vote_actions], [])
+        self.assertEventsEqual(new_events, expected_events)
+
+    def next_turn_skip_events(self):
+        self.game.end_turn()
+        self.game.pop_new_events()
+
+    def assertEventsEqual(self, events, expected_events, ignore_classes={TurnStartEvent, TurnEndEvent}):
+        grouped_events = defaultdict(list)
+        for e in events:
+            if e.__class__ not in ignore_classes:
+                grouped_events[e.__class__].append(e)
+        grouped_expected_events = defaultdict(list)
+        for e in expected_events:
+            if e.__class__ not in ignore_classes:
+                grouped_expected_events[e.__class__].append(e)
+        self.assertEqual(set(grouped_events.keys()), set(grouped_expected_events.keys()))
+        for k in grouped_events.keys():
+            self.assertCountEqual(grouped_events[k], grouped_expected_events[k])
+
+
+def filter_by_class(events, event_class):
+    return [e for e in events if e.__class__ is event_class]
 
 
 if __name__ == '__main__':

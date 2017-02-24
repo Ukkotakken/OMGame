@@ -172,7 +172,7 @@ class Character:
             return False
         # Check cooldown
         played_day, played_turn = (
-            self.last_played_time.get(action, (0, 0)))
+            self.last_played_time.get(action.__class__, (0, 0)))
         if (self.game.day_num - played_day, self.game.turn_id - played_turn) < (action.cooldown, 0):
             return False
         # Check mana cost
@@ -184,7 +184,7 @@ class Character:
         return True
 
     def set_action_played(self, action, game):
-        self.last_played_time[action] = (game.day_num, game.turn_id)
+        self.last_played_time[action.__class__] = (game.day_num, game.turn_id)
         if action.mana_cost is not None:
             self.mana -= action.mana_cost
 

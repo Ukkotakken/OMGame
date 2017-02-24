@@ -2,6 +2,14 @@ class Event:
     def play(self, game_handler):
         pass
 
+    __hash__ = None
+
+    def __eq__(self, other):
+        if hasattr(other, '__dict__'):
+            return self.__dict__ == other.__dict__
+        return False
+
+
 
 class DeathEvent(Event):
     def __init__(self, character):

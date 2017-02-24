@@ -31,6 +31,14 @@ class Action:
     def play_user_visible_effect(self, character):
         pass
 
+    __hash__ = None
+
+    def __eq__(self, other):
+        if hasattr(other, '__dict__'):
+            return self.__dict__ == other.__dict__
+        return False
+
+
 
 class Vote(Action):
     turn_step = Step.DAY_VOTE_STEP
