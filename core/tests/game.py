@@ -45,6 +45,25 @@ class GameBasicsTest(GameTestBase):
         self.bob = self.chars[1]
         self.game = Game(self.chars, MagicMock())
 
+    def actionQuery_cleared(self):
+        self.next_turn_skip_events()
+        self.alice.attack(self.bob)
+        self.game.play_turn()
+
+        attack_action = BaseAttack(caller=self.alice, executor=self.alice, target=self.bob)
+        expected_events = [
+            ActionPlayedEvent(attack_action),
+            DamageEvent(self.bob, 1, DamageType.PHISICAL, attack_action)]
+        self.assertEventsEqual(self.game.pop_new_events(), expected_events)
+
+        self.game.start_new_turn()
+        self.next_turn_skip_events()
+        self.game.play_turn()
+        self.assertEventsEqual(self.game.pop_new_events(), [])
+
+
+
+
     def testAttack_failDay(self):
         try:
             self.alice.attack(self.bob)
