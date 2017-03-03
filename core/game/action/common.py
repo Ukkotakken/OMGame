@@ -35,6 +35,8 @@ class Vote(Action):
     turn_step = Step.DAY_VOTE_STEP
     can_cancel = False
 
+    name = 'vote'
+
     def play(self, game):
         self.target.add_votes(self.executor.vote_strength)
         game.log(VoteEvent(self))
@@ -42,6 +44,8 @@ class Vote(Action):
 
 class BaseAttack(Action):
     turn_step = Step.NIGHT_ACTIVE_STEP
+
+    name = 'base_attack'
 
     def play(self, game):
         self.target.receive_damage(

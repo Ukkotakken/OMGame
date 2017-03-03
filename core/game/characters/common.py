@@ -23,8 +23,9 @@ def check_effects(method):
             if not hasattr(effect, before_effect):
                 continue
             effect_method = getattr(effect, before_effect)
-            return_value, transformed_args = effect_method(
+            effect_return = effect_method(
                 obj, *args, **kwargs)
+            return_value, transformed_args = effect_return
             if transformed_args is None:
                 return return_value
             args, kwargs = transformed_args
@@ -180,8 +181,6 @@ class Character:
         if action.mana_cost is not None:
             if self.mana < action.mana_cost:
                 return False
-            else:
-                self.mana -= action.mana_cost
         return True
 
     def set_action_played(self, action, game):
