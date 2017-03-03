@@ -12,7 +12,31 @@ from core.game.game import Game
 from core.game.turn import DayTurn, NightTurn
 
 
-class GameBasicsTest(unittest.TestCase):
+class GameTestBase(unittest.TestCase):
+    def setUp(self):
+        if not hasattr(self, 'chars'):
+            self.chars = []
+        self.game = Game(self.chars, MagicMock())
+
+    def next_turn_skip_events(self):
+        self.game.end_turn()
+        self.game.pop_new_events()
+
+    def assertEventsEqual(self, events, expected_events, ignore_classes={TurnStartEvent, TurnEndEvent}):
+        grouped_events = defaultdict(list)
+        for e in events:
+            if e.__class__ not in ignore_classes:
+                grouped_events[e.__class__].append(e)
+        grouped_expected_events = defaultdict(list)
+        for e in expected_events:
+            if e.__class__ not in ignore_classes:
+                grouped_expected_events[e.__class__].append(e)
+        self.assertEqual(set(grouped_events.keys()), set(grouped_expected_events.keys()))
+        for k in grouped_events.keys():
+            self.assertCountEqual(grouped_events[k], grouped_expected_events[k])
+
+
+class GameBasicsTest(GameTestBase):
     def setUp(self):
         self.chars = [
             Character(MagicMock()),
@@ -20,6 +44,25 @@ class GameBasicsTest(unittest.TestCase):
         self.alice = self.chars[0]
         self.bob = self.chars[1]
         self.game = Game(self.chars, MagicMock())
+
+    def actionQuery_cleared(self):
+        self.next_turn_skip_events()
+        self.alice.attack(self.bob)
+        self.game.play_turn()
+
+        attack_action = BaseAttack(caller=self.alice, executor=self.alice, target=self.bob)
+        expected_events = [
+            ActionPlayedEvent(attack_action),
+            DamageEvent(self.bob, 1, DamageType.PHISICAL, attack_action)]
+        self.assertEventsEqual(self.game.pop_new_events(), expected_events)
+
+        self.game.start_new_turn()
+        self.next_turn_skip_events()
+        self.game.play_turn()
+        self.assertEventsEqual(self.game.pop_new_events(), [])
+
+
+
 
     def testAttack_failDay(self):
         try:
@@ -162,24 +205,6 @@ class GameBasicsTest(unittest.TestCase):
         expected_events = sum([
                                   [VoteEvent(v), ActionPlayedEvent(v)] for v in vote_actions], [])
         self.assertEventsEqual(new_events, expected_events)
-
-    def next_turn_skip_events(self):
-        self.game.end_turn()
-        self.game.pop_new_events()
-
-    def assertEventsEqual(self, events, expected_events, ignore_classes={TurnStartEvent, TurnEndEvent}):
-        grouped_events = defaultdict(list)
-        for e in events:
-            if e.__class__ not in ignore_classes:
-                grouped_events[e.__class__].append(e)
-        grouped_expected_events = defaultdict(list)
-        for e in expected_events:
-            if e.__class__ not in ignore_classes:
-                grouped_expected_events[e.__class__].append(e)
-        self.assertEqual(set(grouped_events.keys()), set(grouped_expected_events.keys()))
-        for k in grouped_events.keys():
-            self.assertCountEqual(grouped_events[k], grouped_expected_events[k])
-
 
 def filter_by_class(events, event_class):
     return [e for e in events if e.__class__ is event_class]

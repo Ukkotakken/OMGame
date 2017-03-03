@@ -23,8 +23,9 @@ def check_effects(method):
             if not hasattr(effect, before_effect):
                 continue
             effect_method = getattr(effect, before_effect)
-            return_value, transformed_args = effect_method(
+            effect_return = effect_method(
                 obj, *args, **kwargs)
+            return_value, transformed_args = effect_return
             if transformed_args is None:
                 return return_value
             args, kwargs = transformed_args
@@ -142,11 +143,11 @@ class Character:
         self.play(BaseAttack, caller=self, target=character)
 
     @check_effects
-    def play(self, ability, **kwargs):
+    def play(self, ability, target=None, **kwargs):
         # TODO(ukkotakken): Check that action can be played (no CD problems, etc).
         if ability.turn_step not in self.game.turn.STEP_ORDER:
             raise WrongTurnException(ability, self.game.turn)
-        action = ability(executor=self, **kwargs)
+        action = ability(executor=self, target=target, **kwargs)
         action.play_user_visible_effect(self)
         self.action_queue.append(action)
         return action
@@ -180,8 +181,6 @@ class Character:
         if action.mana_cost is not None:
             if self.mana < action.mana_cost:
                 return False
-            else:
-                self.mana -= action.mana_cost
         return True
 
     def set_action_played(self, action, game):

@@ -27,7 +27,7 @@ class Game:
 
     TURN_ORDER = [DayTurn, NightTurn]
 
-    def __init__(self, characters, game_handler):
+    def __init__(self, characters, game_handler, turn_type_generator=None):
         self.game_handler = game_handler
 
         self.characters = characters
