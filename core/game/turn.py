@@ -25,6 +25,7 @@ class Turn:
                     self.add_action(action)
                     character.set_action_played(action, game)
                     game.log(ActionPlayedEvent(action))
+            character.action_queue[:] = []
 
         for phase, actions in self.actions.items():
             for action in actions:

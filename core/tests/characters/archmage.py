@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
-from core.game.action.archmage import Fireball
+from core.game.action.archmage import Fireball, ManaStorm, ChainLightning, ChainLightningEffect, ChainLightningDamage, \
+    ElementalProtection
 from core.game.action.common import BaseAttack
 from core.game.characters.archmage import Archmage
 from core.game.characters.common import Character
@@ -106,15 +107,184 @@ class ArchmageTest(GameTestBase):
                 DamageEvent(self.alice, 2, DamageType.BURNING, alice_ball)])
 
     def testManaStorm(self):
-        # TODO(ukkotakken): Add a test.
-        pass
+        self.next_turn_skip_events()
+        self.game.turn.turn_type = TurnType.DIVINE_POWER
+
+        self.archmage.mana = 3
+        self.archmage.play(ManaStorm, caller=self.archmage)
+        self.game.play_turn()
+        self.assertEqual(self.alice.health, 2)
+        self.assertEqual(self.bob.health, 2)
+        self.assertEqual(self.archmage.health, 1)
+        self.assertEqual(self.archmage.mana, 0)
+
+        mana_storm = ManaStorm(self.archmage, self.archmage, None)
+        self.assertEventsEqual(
+            self.game.pop_new_events(), [
+                ActionPlayedEvent(mana_storm),
+                DamageEvent(self.alice, 1, DamageType.BURNING, mana_storm),
+                DamageEvent(self.bob, 1, DamageType.BURNING, mana_storm)])
+
+    def testManaStorm_Spamming(self):
+        self.next_turn_skip_events()
+        self.game.turn.turn_type = TurnType.DIVINE_POWER
+
+        self.archmage.mana = 8
+        self.archmage.play(ManaStorm, caller=self.archmage)
+        self.archmage.play(ManaStorm, caller=self.archmage)
+        self.game.play_turn()
+        self.assertEqual(self.alice.health, 1)
+        self.assertEqual(self.bob.health, 1)
+        self.assertEqual(self.archmage.health, 1)
+        self.assertEqual(self.archmage.mana, 2)
+
+        mana_storm = ManaStorm(self.archmage, self.archmage, None)
+        self.assertEventsEqual(
+            self.game.pop_new_events(), [
+                ActionPlayedEvent(mana_storm),
+                ActionPlayedEvent(mana_storm),
+                DamageEvent(self.alice, 1, DamageType.BURNING, mana_storm),
+                DamageEvent(self.bob, 1, DamageType.BURNING, mana_storm),
+                DamageEvent(self.alice, 1, DamageType.BURNING, mana_storm),
+                DamageEvent(self.bob, 1, DamageType.BURNING, mana_storm)])
+
 
     def testChainLightning(self):
-        # TODO(ukkotakken): Add a test.
-        pass
+        self.next_turn_skip_events()
+        self.game.turn.turn_type = TurnType.DIVINE_POWER
+
+        self.archmage.mana = 5
+        self.archmage.play(ChainLightning, caller=self.archmage, target=self.alice)
+        self.alice.attack(self.bob)
+        self.game.play_turn()
+        self.assertEqual(self.alice.health, 2)
+        self.assertEqual(self.bob.health, 1)
+        self.assertEqual(self.archmage.health, 1)
+        self.assertEqual(self.archmage.mana, 3)
+
+        chain_lightning_action = ChainLightning(self.archmage, self.archmage, self.alice)
+        chain_lightning_damage = ChainLightningDamage(self.archmage, None, None)
+        alice_attack = BaseAttack(self.alice, self.alice, self.bob)
+        self.assertEventsEqual(
+            self.game.pop_new_events(), [
+                ActionPlayedEvent(chain_lightning_action),
+                ActionPlayedEvent(alice_attack),
+                DamageEvent(self.alice, 1, DamageType.BURNING, chain_lightning_damage),
+                DamageEvent(self.bob, 1, DamageType.BURNING, chain_lightning_damage),
+                DamageEvent(self.bob, 1, DamageType.PHISICAL, alice_attack)])
 
     def testElementalProtection(self):
-        # TODO(ukkotakken): Add a test.
-        pass
+        elemental_protection_action = ElementalProtection(self.archmage, self.archmage, self.alice)
+        expected_daily_events =  [
+            ActionPlayedEvent(elemental_protection_action),
+            SendTurnTypeEvent(self.archmage, self.game.turn.turn_type)]
+
+        # Day 1 - EP + CL
+        self.game.turn.turn_type = TurnType.DIVINE_POWER
+
+        self.archmage.play(ElementalProtection, caller=self.archmage, target=self.alice)
+
+        self.game.play_turn()
+        self.assertEventsEqual(self.game.pop_new_events(), expected_daily_events)
+
+        # Night 1 (CL)
+        self.game.start_new_turn()
+
+        self.archmage.mana = 3
+        self.archmage.play(ChainLightning, caller=self.archmage, target=self.alice)
+        self.alice.attack(self.bob)
+        self.game.play_turn()
+        self.assertEqual(self.alice.health, 3)
+        self.assertEqual(self.bob.health, 1)
+        self.assertEqual(self.archmage.health, 1)
+        self.assertEqual(self.archmage.mana, 1)
+
+        chain_lightning_action = ChainLightning(self.archmage, self.archmage, self.alice)
+        chain_lightning_damage = ChainLightningDamage(self.archmage, None, None)
+        alice_attack = BaseAttack(self.alice, self.alice, self.bob)
+
+        self.assertEventsEqual(
+            self.game.pop_new_events(), [
+                ActionPlayedEvent(chain_lightning_action),
+                ActionPlayedEvent(alice_attack),
+                DamageEvent(self.bob, 1, DamageType.BURNING, chain_lightning_damage),
+                DamageEvent(self.bob, 1, DamageType.PHISICAL, alice_attack)])
+
+        self.bob.health = 3
+
+        # Day 2 - EP + FB
+        self.game.start_new_turn()
+
+        self.game.turn.turn_type = TurnType.DIVINE_POWER
+
+        self.archmage.play(ElementalProtection, caller=self.archmage, target=self.alice)
+
+        self.game.play_turn()
+        self.assertEventsEqual(self.game.pop_new_events(), expected_daily_events)
+
+        # Night 2 (FB)
+        self.game.start_new_turn()
+
+        self.archmage.mana = 3
+        self.archmage.play(Fireball, caller=self.archmage, target=self.alice)
+        self.game.play_turn()
+        self.assertEqual(self.alice.health, 3)
+        self.assertEqual(self.archmage.health, 1)
+        self.assertEqual(self.archmage.mana, 0)
+
+        fireball_action = Fireball(self.archmage, self.archmage, self.alice)
+        self.assertEventsEqual(
+            self.game.pop_new_events(), [
+                ActionPlayedEvent(fireball_action)])
+
+        # Day 3 - EP + MS
+        self.game.start_new_turn()
+
+        self.game.turn.turn_type = TurnType.DIVINE_POWER
+
+        self.archmage.play(ElementalProtection, caller=self.archmage, target=self.alice)
+
+        self.game.play_turn()
+        self.assertEventsEqual(self.game.pop_new_events(), expected_daily_events)
+
+        # Night 3 (MS)
+        self.game.start_new_turn()
+
+        self.archmage.mana = 3
+        self.archmage.play(ManaStorm, caller=self.archmage)
+        self.game.play_turn()
+        self.assertEqual(self.alice.health, 3)
+        self.assertEqual(self.bob.health, 2)
+        self.assertEqual(self.archmage.health, 1)
+        self.assertEqual(self.archmage.mana, 0)
+
+        mana_storm = ManaStorm(self.archmage, self.archmage, None)
+        self.assertEventsEqual(
+            self.game.pop_new_events(), [
+                ActionPlayedEvent(mana_storm),
+                DamageEvent(self.bob, 1, DamageType.BURNING, mana_storm)])
+
+        # Day 3 - EP + MS
+        self.game.start_new_turn()
+        self.game.play_turn()
+        self.next_turn_skip_events()
+
+
+        # Night 4 (MS)
+        self.game.turn.turn_type = TurnType.MAGIC_POWER
+        self.archmage.mana = 3
+        self.archmage.play(Fireball, caller=self.archmage, target=self.alice)
+        self.game.play_turn()
+        self.assertEqual(self.alice.health, -1)
+        self.assertEqual(self.bob.health, 2)
+        self.assertEqual(self.archmage.health, 1)
+        self.assertEqual(self.archmage.mana, 0)
+
+        self.assertEventsEqual(
+            self.game.pop_new_events(), [
+                ActionPlayedEvent(fireball_action),
+                DamageEvent(self.alice, 4, DamageType.BURNING, fireball_action)])
+
+
 
 

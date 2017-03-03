@@ -28,10 +28,8 @@ class ManaStorm(Action):
     turn_step = Step.NIGHT_ACTIVE_STEP
 
     def play(self, game):
-        base_damage = 2 if game.turn_type is TurnType.MAGIC_POWER else 1
+        base_damage = 2 if game.turn.turn_type is TurnType.MAGIC_POWER else 1
         for c in game.characters:
-            if c is self.executor:
-                continue
             c.receive_damage(base_damage, DamageType.BURNING, self)
 
 
@@ -68,12 +66,15 @@ class ChainLightningEffect(CharacterEffect):
 
         strength = 2 if turn.turn_type is TurnType.MAGIC_POWER else 1
         damage_action = ChainLightningDamage(self.action.caller, None, None)
+        character.receive_damage(strength, DamageType.BURNING, damage_action)
         for c in first_order_targets:
-            c.recieve_damage(strength, DamageType.BURNING, damage_action)
+            c.receive_damage(strength, DamageType.BURNING, damage_action)
 
         if strength > 1:
             for c in second_order_targets:
-                c.recieve_damage(strength - 1, DamageType.BURNING, damage_action)
+                c.receive_damage(strength - 1, DamageType.BURNING, damage_action)
+
+        return effects.common.pipe_argument(turn)
 
     def passed(self):
         return True
@@ -91,14 +92,14 @@ class ElementalProtection(Action):
     turn_step = Step.DAY_ACTIVE_STEP
 
     def play(self, game):
-        self.target.add_effect(ElementalProtectionEffect())
+        self.target.add_effect(ElementalProtectionEffect(2))
 
 
 class ElementalProtectionEffect(CharacterEffect):
     priority = EffectPriority.ELEMENTAL_PROTECTION_PRIORITY
 
     def __init__(self, duration_turn=None):
-        self.duration_turn = duration_turn
+        self.duration_turn = duration_turn # Default option is 2 for day + night
 
     def before__receive_damage(self, character, strength, type, action):
         if action.__class__ in {ChainLightningDamage, ManaStorm, Fireball}:

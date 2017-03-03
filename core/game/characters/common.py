@@ -143,11 +143,11 @@ class Character:
         self.play(BaseAttack, caller=self, target=character)
 
     @check_effects
-    def play(self, ability, **kwargs):
+    def play(self, ability, target=None, **kwargs):
         # TODO(ukkotakken): Check that action can be played (no CD problems, etc).
         if ability.turn_step not in self.game.turn.STEP_ORDER:
             raise WrongTurnException(ability, self.game.turn)
-        action = ability(executor=self, **kwargs)
+        action = ability(executor=self, target=target, **kwargs)
         action.play_user_visible_effect(self)
         self.action_queue.append(action)
         return action
