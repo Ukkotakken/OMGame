@@ -5,45 +5,24 @@ from core.game.exceptions import NoActionInQueueException, UncancelableActionExc
 
 
 def check_effects(method):
-    """
-    There are two different types of effects in this game:
-    "__before" effects do some action on call of the effect, transform input or return another value.
-    They must return two values - first one is return value, second one is transformed arguments (dict).
-    If there transformed arguments are None, pipe will stop execution and apply "__after" effects.
-    Example: Paladin protection is a pipe effect. It makes paladin suffer all damage instead of a character.
-    Example: If a character is controlled by Puppeter, all can_play calls for his actions should return False this night.
-    "__after" effects are for chaging actual return value, they get it and return something else.
-    Example: There are buffs for base attack increase.
-    """
-    before_effect = "before__" + method.__name__
-    after_effect = "after__" + method.__name__
-
-    def _apply_before_effects(obj, *args, **kwargs):
-        for effect in obj.effects:
-            if not hasattr(effect, before_effect):
+    def apply_effects(character, *args, **kwargs):
+        progress = character.effects_progress.get(method.__name__, 0)
+        is_applied = False
+        return_value = None
+        for i, effect in enumerate(character.effects[progress:], start=progress):
+            if not hasattr(effect, method.__name__):
                 continue
-            effect_method = getattr(effect, before_effect)
-            effect_return = effect_method(
-                obj, *args, **kwargs)
-            return_value, transformed_args = effect_return
-            if transformed_args is None:
-                return return_value
-            args, kwargs = transformed_args
-        return method(obj, *args, **kwargs)
+            effect_method = getattr(effect, method.__name__)
+            character.effects_progress[method.__name__] = i + 1
+            is_applied = True
+            return_value = effect_method(character, *args, **kwargs)
+            break
+        character.effects_progress[method.__name__] = 0
+        if not is_applied:
+            return_value = method(character, *args, **kwargs)
+        return return_value
 
-    def _apply_after_effects(obj, value, *args, **kwargs):
-        for effect in obj.effects:
-            if not hasattr(effect, after_effect):
-                continue
-            effect_method = getattr(effect, after_effect)
-            value = effect_method(obj, value, *args, **kwargs)
-        return value
-
-    def check_effects_impl(obj, *args, **kwargs):
-        value = _apply_before_effects(obj, *args, **kwargs)
-        return _apply_after_effects(obj, value, *args, **kwargs)
-
-    return check_effects_impl
+    return apply_effects
 
 
 class Character:
@@ -60,6 +39,7 @@ class Character:
     def __init__(self, player):
         self.player = player
         self.player.set_character(self)
+        self.effects_progress = {}
 
         self.health = self.start_health
         self.max_health = self.start_max_health
