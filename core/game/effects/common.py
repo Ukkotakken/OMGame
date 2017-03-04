@@ -29,7 +29,7 @@ class ReceiveManaEffect(CharacterEffect):
         """mana_table is a dict turn_type -> mana_amount"""
         self.mana_table = mana_table
 
-    def before__turn_start(self, character, turn):
+    def turn_start(self, character, turn):
         if turn.__class__ is DayTurn:
             character.mana += self.mana_table[turn.turn_type]
-        return pipe_argument(turn=turn)
+        character.turn_start(turn)
