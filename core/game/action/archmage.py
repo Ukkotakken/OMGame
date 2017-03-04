@@ -51,7 +51,7 @@ class ChainLightningEffect(CharacterEffect):
     def __init__(self, action):
         self.action = action
 
-    def before__turn_end(self, character, turn):
+    def turn_end(self, character, turn):
         battles = {(e.character, e.action.executor)
                for e in character.game.new_events
                if isinstance(e, DamageEvent) and e.action.target is not None}
@@ -74,7 +74,7 @@ class ChainLightningEffect(CharacterEffect):
             for c in second_order_targets:
                 c.receive_damage(strength - 1, DamageType.BURNING, damage_action)
 
-        return effects.common.pipe_argument(turn)
+        character.turn_end(turn)
 
     def passed(self):
         return True
@@ -101,16 +101,15 @@ class ElementalProtectionEffect(CharacterEffect):
     def __init__(self, duration_turn=None):
         self.duration_turn = duration_turn # Default option is 2 for day + night
 
-    def before__receive_damage(self, character, strength, type, action):
+    def receive_damage(self, character, strength, type, action):
         if action.__class__ in {ChainLightningDamage, ManaStorm, Fireball}:
-            return effects.common.pipe_value(None)
-        else:
-            return effects.common.pipe_argument(strength=strength, type=type, action=action)
+            return
+        character.receive_damage(strength=strength, type=type, action=action)
 
-    def before__turn_end(self, character, *args, **kwargs):
+    def turn_end(self, character, *args, **kwargs):
         if self.duration_turn is not None:
             self.duration_turn -= 1
-        return effects.common.pipe_argument(*args, **kwargs)
+        return character.turn_end(*args, **kwargs)
 
     def passed(self):
         return self.duration_turn is not None and self.duration_turn <= 0
