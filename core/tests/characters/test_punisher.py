@@ -28,16 +28,30 @@ class PunisherTest(GameTestBase):
         super().setUp()
 
     def testPeanance(self):
+        # Test that punisher gets role of killed char.
+        # Test that punisher doesn't get role of attacked char.
         pass
 
     def testVengeance(self):
         pass
 
+    def testVengeance_ignoresManashield(self):
+        pass
+
     def testVengeance_innocent(self):
+        # Test that punisher gets a debuff and can't play any abilities.
         pass
 
     def testBloodhound(self):
+        # Test bloodhound.
         pass
 
     def testPunisherVote(self):
+        pass
+
+    def testPunisherVote_vengeanceOnInnocent(self):
+        pass
+
+    def testPunisherVote_bloodhound(self):
+        self.testBloodhound()
         pass
