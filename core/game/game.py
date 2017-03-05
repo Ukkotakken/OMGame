@@ -85,10 +85,10 @@ class Game:
 
     def apply_effects_turn_end(self):
         for character in self.characters:
-            character.turn_end(self.turn)
+            character.on_turn_end(self.turn)
             character.remove_passed_effects()
 
     def apply_effects_turn_start(self):
         for character in self.characters:
-            character.turn_start(self.turn)
+            character.on_turn_start(self.turn)
             character.remove_passed_effects()

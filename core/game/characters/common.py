@@ -2,25 +2,30 @@ from core.game.action.common import Vote, BaseAttack
 from core.game.common import DamageType, State
 from core.game.events.common import DamageEvent, DeathEvent, ImprisonEvent, VoteInstantEvent
 from core.game.exceptions import NoActionInQueueException, UncancelableActionException, WrongTurnException
+from core.game.turn import DayTurn, NightTurn
 
 
 def check_effects(method):
     def apply_effects(character, *args, **kwargs):
-        progress = character.effects_progress.get(method.__name__, 0)
-        is_applied = False
-        return_value = None
-        for i, effect in enumerate(character.effects[progress:], start=progress):
-            if not hasattr(effect, method.__name__):
-                continue
-            effect_method = getattr(effect, method.__name__)
-            character.effects_progress[method.__name__] = i + 1
-            is_applied = True
-            return_value = effect_method(character, *args, **kwargs)
-            break
-        character.effects_progress[method.__name__] = 0
-        if not is_applied:
-            return_value = method(character, *args, **kwargs)
-        return return_value
+        try:
+            progress = character.effects_progress.get(method.__name__, 0)
+            is_applied = False
+            return_value = None
+            for i, effect in enumerate(character.effects[progress:], start=progress):
+                if not hasattr(effect, method.__name__):
+                    continue
+                effect_method = getattr(effect, method.__name__)
+                character.effects_progress[method.__name__] = i + 1
+                is_applied = True
+                return_value = effect_method(character, *args, **kwargs)
+                break
+            character.effects_progress[method.__name__] = 0
+            if not is_applied:
+                return_value = method(character, *args, **kwargs)
+            return return_value
+        except Exception as e:
+            character.effects_progress[method.__name__] = 0
+            raise e
 
     return apply_effects
 
@@ -54,6 +59,11 @@ class Character:
 
         self.votes_number = 0
         self.damaged_by = set()
+        self.damaged_by_characters = set()
+
+        self.caused_damage = set()
+        self.killed = set()
+
         self.next_step_effects = []
         self.action_queue = []
         self.last_played_time = {}  # Action -> (day_num, turn_id)
@@ -67,6 +77,9 @@ class Character:
             self.damaged_by.add(type)
             self.health -= strength
             self.game.log(DamageEvent(self, strength, type, action))
+            if action.executor:
+                self.damaged_by_characters.add(action.executor)
+                action.executor.on_cause_damage(self)
 
     @property
     def name(self):
@@ -90,13 +103,15 @@ class Character:
         self.next_step_effects.append(effect)
 
     @check_effects
-    def is_dead(self):
-        return self.health <= 0
+    def dies(self):
+        return self.state is not State.DEAD and self.health <= 0
 
     @check_effects
     def death(self):
         self.state = State.DEAD
         self.game.log(DeathEvent(self))
+        for character in self.damaged_by_characters:
+            character.on_kill(self)
 
     @check_effects
     def imprison(self):
@@ -124,7 +139,7 @@ class Character:
 
     @check_effects
     def play(self, ability, target=None, **kwargs):
-        # TODO(ukkotakken): Check that action can be played (no CD problems, etc).
+        # TODO(ukkotakken): Check that action can be played (no CD problems in perspective, etc).
         if ability.turn_step not in self.game.turn.STEP_ORDER:
             raise WrongTurnException(ability, self.game.turn)
         action = ability(executor=self, target=target, **kwargs)
@@ -161,7 +176,7 @@ class Character:
         if action.mana_cost is not None:
             if self.mana < action.mana_cost:
                 return False
-        return True
+        return action.can_play_check(self)
 
     def set_action_played(self, action, game):
         self.last_played_time[action.__class__] = (game.day_num, game.turn_id)
@@ -169,12 +184,21 @@ class Character:
             self.mana -= action.mana_cost
 
     @check_effects
-    def turn_start(self, turn):
+    def on_turn_start(self, turn):
+        if isinstance(turn, NightTurn):
+            self.damaged_by_characters = set()
+
+    @check_effects
+    def on_turn_end(self, turn):
         pass
 
     @check_effects
-    def turn_end(self, turn):
-        pass
+    def on_cause_damage(self, character):
+        self.caused_damage.add(character)
+
+    @check_effects
+    def on_kill(self, character):
+        self.killed.add(character)
 
     @check_effects
     def can_win(self):

@@ -8,7 +8,7 @@ from core.game.characters.common import Character
 from core.game.common import TurnType, DamageType
 from core.game.events.archmage import SendTurnTypeEvent
 from core.game.events.common import ActionPlayedEvent, DamageEvent, DeathEvent
-from core.tests.game import GameTestBase
+from core.tests.test_game import GameTestBase
 
 
 class ArchmageTest(GameTestBase):

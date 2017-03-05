@@ -17,3 +17,7 @@ class WrongTurnException(GameException):
     def __init__(self, ability, turn):
         self.ability = ability
         self.turn = turn
+
+class BanishedFromClassException(GameException):
+    def __init__(self):
+        pass

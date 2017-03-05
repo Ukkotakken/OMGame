@@ -1,20 +1,13 @@
 from core.game.effects.common import CharacterEffect, pipe_argument
+from core.game.effects.priorities import EffectPriority
 from core.game.events.common import DamageEvent
+from core.game.events.punisher import PenanceEvent
 from core.game.turn import DayTurn
 
 
 class Penance(CharacterEffect):
-    priority = None
+    priority = EffectPriority.TURN_END_INFO_PRIORITY
 
-    def after__turn_end(self, character, _, turn):
-        if not isinstance(turn, DayTurn):
-            return pipe_argument(turn)
-        attack_targets = [
-            e.action.target for e in character.game.new_events
-            if isinstance(e, DamageEvent)
-               and e.action.target is not None
-               and e.action.executor is character]
-        for c in attack_targets:
-            if c.dies(): character.game.log(PenanceEvent(c))
-
-
+    def on_kill(self, character, killed_character):
+        character.game.log(PenanceEvent(character, killed_character))
+        character.on_kill(killed_character)
