@@ -7,7 +7,7 @@ from core.game.characters.archmage import Archmage
 from core.game.characters.common import Character
 from core.game.common import TurnType, DamageType
 from core.game.events.archmage import SendTurnTypeEvent
-from core.game.events.common import ActionPlayedEvent, DamageEvent, DeathEvent
+from core.game.events.common import ActionPlayedEvent, DamageEvent, DeathEvent, VictoryEvent
 from core.tests.test_game import GameTestBase
 
 
@@ -21,6 +21,7 @@ class ArchmageTest(GameTestBase):
         self.archmage = self.chars[0]
         self.alice = self.chars[1]
         self.bob = self.chars[2]
+        self.alice.sides = self.bob.sides = {-1}
         super().setUp()
 
     def testTurnTypeKnowledge(self):

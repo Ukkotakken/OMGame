@@ -1,10 +1,9 @@
-from enum import Enum
-
-from core.game.action.punisher import PunisherVote
+from core.game.action.punisher import PunisherVote, Bloodhound, Vengeance
 from core.game.characters.common import Character, check_effects
-from core.game.common import TurnType, DamageType
+from core.game.common import TurnType, DamageType, GuiltyDegree, Sides
 from core.game.effects.common import ReceiveManaEffect
-from core.game.events.common import VoteInstantEvent, DamageEvent, TurnEndEvent, DeathEvent
+from core.game.effects.punisher import Penance
+from core.game.events.common import VoteInstantEvent
 
 
 class Punisher(Character):
@@ -15,10 +14,15 @@ class Punisher(Character):
     role_vote_strength = 1
     role_attack_type = DamageType.PHISICAL
     role_abilities_list = [
+        PunisherVote,
+        Vengeance,
+        Bloodhound
     ]
     role_effects_list = [
-        ReceiveManaEffect({TurnType.MAGIC_POWER: 1, TurnType.DIVINE_POWER: 0})]
-    role_sides = set()
+        ReceiveManaEffect({TurnType.MAGIC_POWER: 1, TurnType.DIVINE_POWER: 0}),
+        Penance()
+    ]
+    role_sides = {Sides.SIDE_123, Sides.SIDE_124, Sides.SIDE_147}
 
     def __init__(self, *args, **kwargs):
         self.guilty_degrees = {}
@@ -35,9 +39,3 @@ class Punisher(Character):
         if target in character.caused_damage:
             return GuiltyDegree.DAMAGED
         return GuiltyDegree.NO_GUILTY
-
-
-class GuiltyDegree(Enum):
-    NO_GUILTY = 0
-    DAMAGED = 1
-    KILLED = 2

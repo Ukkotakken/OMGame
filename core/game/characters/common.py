@@ -206,7 +206,7 @@ class Character:
 
     @check_effects
     def prevents_victory(self, side):
-        return side not in self.sides and self.state is not State.ALIVE
+        return side not in self.sides and self.state is State.ALIVE
 
     def remove_passed_effects(self):
         self.effects = [e for e in self.effects if not e.passed()]

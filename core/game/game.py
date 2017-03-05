@@ -72,7 +72,7 @@ class Game:
         self.apply_effects_turn_end()
         self.log(TurnEndEvent(self.turn))
 
-    def end_turn(self, character=None):
+    def play_and_start_new_turn(self, character=None):
         # TODO(ukkotakken): Implement waiting other players
         self.play_turn()
         self.start_new_turn()

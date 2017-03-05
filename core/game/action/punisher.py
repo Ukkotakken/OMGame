@@ -1,6 +1,5 @@
 from core.game.action.common import Action, Vote
-from core.game.characters.punisher import find_guilty_degree, GuiltyDegree
-from core.game.common import Step, TurnType, DamageType
+from core.game.common import Step, TurnType, DamageType, GuiltyDegree
 from core.game.effects.common import CharacterEffect, TimedCharacterEffect, CantPlayActionEffect
 from core.game.effects.priorities import EffectPriority
 from core.game.events.common import VoteEvent, DamageEvent
@@ -85,6 +84,8 @@ class ClassBanishEffect(CharacterEffect):
 class Bloodhound(Action):
     mana_cost = 1
     turn_step = Step.DAY_ACTIVE_STEP
+
+    name = 'bloodhound'
 
     def play(self, game):
         self.executor.add_effect(CantPlayActionEffect(turns=1))

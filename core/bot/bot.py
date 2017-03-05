@@ -137,7 +137,7 @@ class Handler:
 
     @extract_player_and_arguments
     def end_turn(self, player):
-        player.game_handler.game.end_turn(player.character)
+        player.game_handler.game.play_and_start_new_turn(player.character)
 
     @extract_player_and_arguments
     def stats(self, player):
@@ -158,7 +158,7 @@ h = Handler()
 dispatcher.add_handler(CommandHandler("start_game", h.start_game))
 dispatcher.add_handler(CommandHandler("vote", h.vote))
 dispatcher.add_handler(CommandHandler('attack', h.attack))
-dispatcher.add_handler(CommandHandler('end_turn', h.end_turn))
+dispatcher.add_handler(CommandHandler('play_and_start_new_turn', h.end_turn))
 dispatcher.add_handler(CommandHandler('stats', h.stats))
 dispatcher.add_handler(MessageHandler(Filters.command, h.help))
 
