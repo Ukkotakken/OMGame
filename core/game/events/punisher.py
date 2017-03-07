@@ -10,6 +10,7 @@ class PenanceEvent(Event):
         # If character dies - send punisher his role
         pass
 
+
 class BloodhoundEvent(Event):
     def __init__(self, punisher, character, send_roles=False):
         self.punisher = punisher
@@ -18,4 +19,13 @@ class BloodhoundEvent(Event):
 
     def play(self, game_handler):
         # Self character.damaged_by_characters + roles if needed.
+        pass
+
+
+class PunishmentBanishEvent(Event):
+    def __init__(self, punisher):
+        self.punisher = punisher
+
+    def play(self, game_handler):
+        # Send a message that punisher was banished from the class
         pass

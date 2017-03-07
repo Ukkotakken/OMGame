@@ -285,7 +285,3 @@ class ArchmageTest(GameTestBase):
             self.game.pop_new_events(), [
                 ActionPlayedEvent(fireball_action),
                 DamageEvent(self.alice, 4, DamageType.BURNING, fireball_action)])
-
-
-
-

@@ -1,12 +1,13 @@
 import unittest
 from collections import defaultdict
 from unittest.mock import MagicMock
+from typing import List
 
 from core.game.action.common import Vote, BaseAttack
 from core.game.characters.common import Character
 from core.game.common import State, DamageType
 from core.game.events.common import TurnStartEvent, TurnEndEvent, VoteEvent, ImprisonEvent, DamageEvent, DeathEvent, \
-    ActionPlayedEvent, VictoryEvent
+    ActionPlayedEvent, VictoryEvent, Event
 from core.game.exceptions import WrongTurnException
 from core.game.game import Game
 from core.game.turn import DayTurn, NightTurn
@@ -26,7 +27,11 @@ class GameTestBase(unittest.TestCase):
         self.game.play_and_start_new_turn()
         self.assertEventsEqual(self.game.pop_new_events(), [])
 
-    def assertEventsEqual(self, events, expected_events, ignore_classes={TurnStartEvent, TurnEndEvent}):
+    def assertEventsEqual(
+            self,
+            events: List[Event],
+            expected_events: List[Event],
+            ignore_classes={TurnStartEvent, TurnEndEvent}):
         grouped_events = defaultdict(list)
         for e in events:
             if e.__class__ not in ignore_classes:

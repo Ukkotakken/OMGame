@@ -3,7 +3,7 @@ from core.game.common import Step, TurnType, DamageType, GuiltyDegree
 from core.game.effects.common import CharacterEffect, TimedCharacterEffect, CantPlayActionEffect
 from core.game.effects.priorities import EffectPriority
 from core.game.events.common import VoteEvent, DamageEvent
-from core.game.events.punisher import BloodhoundEvent
+from core.game.events.punisher import BloodhoundEvent, PunishmentBanishEvent
 from core.game.exceptions import BanishedFromClassException
 from core.game.turn import NightTurn
 
@@ -17,44 +17,44 @@ class PunisherVote(Action):
     def __init__(self, caller, executor, target, victim=None):
         super().__init__(caller, executor, target)
         if victim:
-            self.guilty_degree = executor.find_guilty_degree(target, victim)
+            guilty_degree = executor.find_guilty_degree(target, victim)
         else:
-            self.guilty_degree = executor.guilty_degrees.get(target)
+            guilty_degree = executor.guilty_degrees.get(target)
+        self.strength = self.executor.vote_strength
+        if guilty_degree is GuiltyDegree.DAMAGED:
+            self.strength += 1
+        if guilty_degree is GuiltyDegree.KILLED:
+            self.strength += 2
+
 
     def play(self, game):
-        additional_strength = 0
-        if self.guilty_degree:
-            if self.guilty_degree is GuiltyDegree.DAMAGED:
-                additional_strength += 1
-            if self.guilty_degree is GuiltyDegree.KILLED:
-                additional_strength += 2
-        self.target.add_votes(self.executor.vote_strength + additional_strength)
+        self.target.add_votes(self.strength)
         game.log(VoteEvent(self))
 
 
-class Vengeance(Action):
+class Punishment(Action):
     turn_step = Step.DAY_ACTIVE_STEP
     mana_cost = 1
 
-    name = 'vengeance'
+    name = 'Punishment'
 
     def __init__(self, caller, executor, target, victim):
         super().__init__(caller, executor, target)
         self.victim = victim
 
     def play(self, game):
-        self.target.add_effect(VengeanceEffect(self.victim, self.executor))
+        self.target.add_effect(PunishmentEffect(self.victim, self.executor))
 
 
-class VengeanceEffect(TimedCharacterEffect):
-    priority = EffectPriority.VENGEANCE_PRIORITY
+class PunishmentEffect(TimedCharacterEffect):
+    priority = EffectPriority.PUNISHMENT_PRIORITY
 
     def __init__(self, victim, punisher):
         self.victim = victim
         self.punisher = punisher
         super().__init__(turns=1)
 
-    def receive_damage(self, character, strength, damage_type, action):
+    def receive_damage(self, character, strength, type, action):
         guilty_degree = self.punisher.find_guilty_degree(character, self.victim)
         if action.executor is self.punisher:
             if guilty_degree is not GuiltyDegree.NO_GUILTY:
@@ -65,8 +65,9 @@ class VengeanceEffect(TimedCharacterEffect):
                 character.game.log(DamageEvent(character, base_damage, DamageType.PHISICAL, action))
             else:
                 self.punisher.add_effect(ClassBanishEffect())
+                character.game.log(PunishmentBanishEvent(self.punisher))
 
-        character.receive_damage(strength, damage_type, action)
+        character.receive_damage(strength, type, action)
 
 
 class ClassBanishEffect(CharacterEffect):
@@ -74,11 +75,11 @@ class ClassBanishEffect(CharacterEffect):
 
     def play(self, character, ability, target=None, **kwargs):
         if ability in character.role_abilities_list:
-            if isinstance(ability, PunisherVote):
+            if ability is PunisherVote:
                 ability = Vote
             else:
                 raise BanishedFromClassException()
-        character.play(ability, target, **kwargs)
+        return character.play(ability, target, **kwargs)
 
 
 class Bloodhound(Action):
@@ -102,3 +103,7 @@ class BloodhoundEffect(TimedCharacterEffect):
     def on_turn_end(self, character, turn):
         if isinstance(turn, NightTurn):
             character.game.log(BloodhoundEvent(self.punisher, character, turn.turn_type is TurnType.MAGIC_POWER))
+            dies = character.dies()
+            for c in character.damaged_by_characters:
+                if self.punisher.guilty_degrees.get(c) is not GuiltyDegree.KILLED:
+                    self.punisher.guilty_degrees[c] = GuiltyDegree.KILLED if dies else GuiltyDegree.DAMAGED

@@ -135,7 +135,7 @@ class Character:
 
     @check_effects
     def attack(self, character):
-        self.play(BaseAttack, caller=self, target=character)
+        return self.play(BaseAttack, caller=self, target=character)
 
     @check_effects
     def play(self, ability, target=None, **kwargs):

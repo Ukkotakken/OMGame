@@ -1,4 +1,4 @@
-from core.game.action.punisher import PunisherVote, Bloodhound, Vengeance
+from core.game.action.punisher import PunisherVote, Bloodhound, Punishment
 from core.game.characters.common import Character, check_effects
 from core.game.common import TurnType, DamageType, GuiltyDegree, Sides
 from core.game.effects.common import ReceiveManaEffect
@@ -15,13 +15,11 @@ class Punisher(Character):
     role_attack_type = DamageType.PHISICAL
     role_abilities_list = [
         PunisherVote,
-        Vengeance,
-        Bloodhound
-    ]
+        Punishment,
+        Bloodhound]
     role_effects_list = [
         ReceiveManaEffect({TurnType.MAGIC_POWER: 1, TurnType.DIVINE_POWER: 0}),
-        Penance()
-    ]
+        Penance()]
     role_sides = {Sides.SIDE_123, Sides.SIDE_124, Sides.SIDE_147}
 
     def __init__(self, *args, **kwargs):
