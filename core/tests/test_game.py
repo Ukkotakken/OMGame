@@ -1,12 +1,13 @@
 import unittest
 from collections import defaultdict
 from unittest.mock import MagicMock
+from typing import List
 
 from core.game.action.common import Vote, BaseAttack
 from core.game.characters.common import Character
 from core.game.common import State, DamageType
 from core.game.events.common import TurnStartEvent, TurnEndEvent, VoteEvent, ImprisonEvent, DamageEvent, DeathEvent, \
-    ActionPlayedEvent
+    ActionPlayedEvent, VictoryEvent, Event
 from core.game.exceptions import WrongTurnException
 from core.game.game import Game
 from core.game.turn import DayTurn, NightTurn
@@ -19,10 +20,18 @@ class GameTestBase(unittest.TestCase):
         self.game = Game(self.chars, MagicMock())
 
     def next_turn_skip_events(self):
-        self.game.end_turn()
+        self.game.play_and_start_new_turn()
         self.game.pop_new_events()
 
-    def assertEventsEqual(self, events, expected_events, ignore_classes={TurnStartEvent, TurnEndEvent}):
+    def next_turn_no_events(self):
+        self.game.play_and_start_new_turn()
+        self.assertEventsEqual(self.game.pop_new_events(), [])
+
+    def assertEventsEqual(
+            self,
+            events: List[Event],
+            expected_events: List[Event],
+            ignore_classes={TurnStartEvent, TurnEndEvent}):
         grouped_events = defaultdict(list)
         for e in events:
             if e.__class__ not in ignore_classes:
@@ -46,7 +55,7 @@ class GameBasicsTest(GameTestBase):
         self.game = Game(self.chars, MagicMock())
 
     def actionQuery_cleared(self):
-        self.next_turn_skip_events()
+        self.next_turn_no_events()
         self.alice.attack(self.bob)
         self.game.play_turn()
 
@@ -57,7 +66,7 @@ class GameBasicsTest(GameTestBase):
         self.assertEventsEqual(self.game.pop_new_events(), expected_events)
 
         self.game.start_new_turn()
-        self.next_turn_skip_events()
+        self.next_turn_no_events()
         self.game.play_turn()
         self.assertEventsEqual(self.game.pop_new_events(), [])
 
@@ -72,11 +81,11 @@ class GameBasicsTest(GameTestBase):
             self.assertTrue(isinstance(e.turn, DayTurn))
 
     def testAttack_failCooldown(self):
-        self.next_turn_skip_events()
+        self.next_turn_no_events()
         self.assertEqual(self.bob.health, 3)
         self.alice.attack(self.bob)
         self.alice.attack(self.bob)
-        self.game.end_turn()
+        self.game.play_and_start_new_turn()
         self.assertEqual(self.bob.health, 2)
 
         new_events = self.game.pop_new_events()
@@ -92,7 +101,7 @@ class GameBasicsTest(GameTestBase):
 
 
     def testVote_failNight(self):
-        self.next_turn_skip_events()
+        self.next_turn_no_events()
         try:
             self.alice.vote(self.bob)
         except WrongTurnException as e:
@@ -101,9 +110,9 @@ class GameBasicsTest(GameTestBase):
 
     def testAttack(self):
         self.assertEquals(self.bob.health, 3)
-        self.next_turn_skip_events()
+        self.next_turn_no_events()
         self.alice.attack(self.bob)
-        self.game.end_turn()
+        self.game.play_and_start_new_turn()
         self.assertEquals(self.bob.health, 2)
 
         new_events = self.game.pop_new_events()
@@ -120,9 +129,9 @@ class GameBasicsTest(GameTestBase):
 
     def testAttack_kill(self):
         self.bob.health = 1
-        self.next_turn_skip_events()
+        self.next_turn_no_events()
         self.alice.attack(self.bob)
-        self.game.end_turn()
+        self.game.play_and_start_new_turn()
         self.assertEquals(self.bob.health, 0)
         self.assertEquals(self.bob.state, State.DEAD)
 
@@ -138,15 +147,23 @@ class GameBasicsTest(GameTestBase):
                 action=attack_action)]
         self.assertEventsEqual(new_events, expected_events)
 
+    def testVictory(self):
+        self.alice.sides = {1}
+        self.bob.sides = {1}
+        self.game.play_and_start_new_turn()
+        self.assertEventsEqual(self.game.pop_new_events(), [VictoryEvent(1, self.chars)])
+
     def testAttack_killWin(self):
         # Set sides
         self.alice.sides = {0}
         self.bob.sides = {1}
         # Kill one of the characters
         self.bob.health = 1
-        self.next_turn_skip_events()
+        self.next_turn_no_events()
+        self.next_turn_no_events()
+        self.next_turn_no_events()
         self.alice.attack(self.bob)
-        self.game.end_turn()
+        self.game.play_and_start_new_turn()
         self.assertEquals(self.bob.health, 0)
         self.assertEquals(self.bob.state, State.DEAD)
 
@@ -162,14 +179,11 @@ class GameBasicsTest(GameTestBase):
         self.assertEquals(
             filter_by_class(new_events, DeathEvent),
             [DeathEvent(self.bob)])
-        # self.assertEquals(
-        #    filter_by_class(new_events, VictoryEvent),
-        #    [VictoryEvent(0, [self.alice])])
 
     def testVote_imprison(self):
         self.assertEquals(self.bob.state, State.ALIVE)
         self.alice.vote(self.bob)
-        self.game.end_turn()
+        self.game.play_and_start_new_turn()
         self.assertEqual(self.bob.state, State.IMPRISONED)
 
         vote_action = Vote(caller=self.alice, executor=self.alice, target=self.bob)
@@ -182,7 +196,7 @@ class GameBasicsTest(GameTestBase):
     def testVote_dead(self):
         self.alice.state = State.DEAD
         self.alice.vote(self.bob)
-        self.game.end_turn()
+        self.game.play_and_start_new_turn()
         self.assertEqual(self.bob.state, State.ALIVE)
 
         new_events = self.game.pop_new_events()
@@ -194,7 +208,7 @@ class GameBasicsTest(GameTestBase):
         self.assertEquals(self.bob.state, State.ALIVE)
         self.alice.vote(self.bob)
         self.bob.vote(self.alice)
-        self.game.end_turn()
+        self.game.play_and_start_new_turn()
         self.assertEquals(self.alice.state, State.ALIVE)
         self.assertEquals(self.bob.state, State.ALIVE)
 

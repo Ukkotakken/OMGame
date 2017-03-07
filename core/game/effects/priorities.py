@@ -1,13 +1,19 @@
 class EffectPriority:
-    # before__turn_starts
-    TURN_TYPE_KNOWLEDGE_PRIORITY = 2
+    # on_turn_start
+    TURN_START_INFO_PRIORITY = 2
     RECEIVE_MANA_PRIORITY = 1
 
-    # before__receive_damage
-    ELEMENTAL_PROTECTION_PRIORITY = 2 # also before__turn_end, but doesn't matter
+    # receive_damage
+    PUNISHMENT_PRIORITY = 3
+    RECEIVE_DAMAGE_CANCELING_PRIORITY = 2
     MANA_SHIELD_PRIORITY = 1
 
-    # before__turn_end
-    CHAIN_LIGHTNING_PRIORITY = 1
+    # on_turn_end
+    TURN_END_DAMAGE_PRIORITY = 1
+    TURN_END_INFO_PRIORITY = 0.5
 
-    #
+    # can_play
+    CAN_PLAY_CANCELING_PRIORITY = 1
+
+    # play
+    PLAY_CANCELING_AND_ALTERING_PRIORITY = 1

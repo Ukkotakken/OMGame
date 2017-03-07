@@ -1,7 +1,7 @@
 from core.game.action.archmage import ManaStorm, Fireball, ChainLightning, ElementalProtection, \
     ElementalProtectionEffect
 from core.game.characters.common import Character
-from core.game.common import DamageType, TurnType
+from core.game.common import DamageType, TurnType, Sides
 from core.game.effects.archmage import TurnTypeKnowledge, ManaShieldEffect
 from core.game.effects.common import ReceiveManaEffect
 
@@ -24,4 +24,4 @@ class Archmage(Character):
         ManaShieldEffect(),
         ElementalProtectionEffect(),
         ReceiveManaEffect({TurnType.MAGIC_POWER: 2, TurnType.DIVINE_POWER: 1})]
-    role_sides = set()
+    role_sides = {Sides.SIDE_123, Sides.SIDE_124, Sides.SIDE_236}

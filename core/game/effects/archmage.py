@@ -6,12 +6,12 @@ from core.game.turn import DayTurn
 
 
 class TurnTypeKnowledge(CharacterEffect):
-    priority = EffectPriority.TURN_TYPE_KNOWLEDGE_PRIORITY
+    priority = EffectPriority.TURN_START_INFO_PRIORITY
 
-    def turn_start(self, character, turn):
+    def on_turn_start(self, character, turn):
         if isinstance(turn, DayTurn):
             character.game.log(SendTurnTypeEvent(character, turn.turn_type))
-        character.turn_start(turn)
+        character.on_turn_start(turn)
 
 
 class ManaShieldEffect(CharacterEffect):

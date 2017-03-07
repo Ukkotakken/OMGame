@@ -53,7 +53,7 @@ class DayTurn(Turn):
 
     def _apply_death(self, game):
         for character in game.characters:
-            if character.state is not State.DEAD and character.is_dead():
+            if character.dies():
                 character.death()
 
     def start(self, game):

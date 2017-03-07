@@ -11,6 +11,11 @@ class Action:
     cooldown = 0
     can_cancel = True
 
+    @property
+    def turn_step(self):
+        raise NotImplementedError("Action subclasses should have turn step setted!")
+
+
     def __init__(self, caller, executor, target):
         self.caller = caller
         self.executor = executor
@@ -22,6 +27,9 @@ class Action:
 
     def play_user_visible_effect(self, character):
         pass
+
+    def can_play_check(self, character):
+        return True
 
     __hash__ = None
 

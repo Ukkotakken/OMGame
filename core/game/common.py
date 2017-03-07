@@ -47,3 +47,9 @@ class Step(Enum):
     DAY_VOTE_STEP = "DAY_VOTE_STEP"
     NIGHT_PASSIVE_STEP = "NIGHT_PASSIVE_STEP"
     NIGHT_ACTIVE_STEP = "NIGHT_ACTIVE_STEP"
+
+
+class GuiltyDegree(Enum):
+    NO_GUILTY = 0
+    DAMAGED = 1
+    KILLED = 2
