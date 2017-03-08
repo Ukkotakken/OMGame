@@ -79,7 +79,7 @@ class ApplyEffectAction(Action):
         kwargs['executor'] = executor
         kwargs['target'] = target
         self.kwargs = kwargs # TODO(ukkotakken): Save it only in test enviroment
-        self.effect_target_and_args = []
+        self.target_and_effect = []
         for effect, kw_mapping, effect_target, defaults in self.effects:
             effect_signature = inspect.signature(effect)
             kw = {k: v for k, v in kwargs.items() if k in effect_signature.parameters}
@@ -93,12 +93,12 @@ class ApplyEffectAction(Action):
                 if k not in kw:
                     kw[k] = defaults[k]
             bind = effect_signature.bind(**kw)
-            self.effect_target_and_args.append((kwargs.get(effect_target), effect, bind.args, bind.kwargs))
+            self.target_and_effect.append((kwargs.get(effect_target), effect(*bind.args, **bind.kwargs)))
         del self.kwargs['self']
 
     def play(self, game):
-        for target, effect, args, kwargs in self.effect_target_and_args:
-            target.add_effect(effect(*args, **kwargs))
+        for target, effect in self.target_and_effect:
+            target.add_effect(effect)
 
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
