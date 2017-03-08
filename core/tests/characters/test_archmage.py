@@ -1,11 +1,11 @@
 from unittest.mock import MagicMock
 
-from core.game.action.archmage import Fireball, ManaStorm, ChainLightning, ChainLightningEffect, ChainLightningDamage, \
-    ElementalProtection
+from core.game.action.archmage import Fireball, ManaStorm, ChainLightning, ElementalProtection
 from core.game.action.common import BaseAttack
 from core.game.characters.archmage import Archmage
 from core.game.characters.common import Character
 from core.game.common import TurnType, DamageType
+from core.game.effects.archmage import ChainLightningDamage
 from core.game.events.archmage import SendTurnTypeEvent
 from core.game.events.common import ActionPlayedEvent, DamageEvent, DeathEvent, VictoryEvent
 from core.tests.test_game import GameTestBase
@@ -32,13 +32,12 @@ class ArchmageTest(GameTestBase):
         self.next_turn_skip_events()
         archmage_mana = self.archmage.mana
         archmage_health = self.archmage.health
-        self.alice.attack(self.archmage)
+        attack_action = self.alice.attack(self.archmage)
         self.game.play_turn()
         self.assertEqual(self.archmage.health, archmage_health)
         self.assertEqual(self.archmage.mana, archmage_mana - 1)
 
         new_events = self.game.pop_new_events()
-        attack_action = BaseAttack(caller=self.alice, executor=self.alice, target=self.archmage)
         expected_events = [
             ActionPlayedEvent(attack_action),
             DamageEvent(
@@ -55,12 +54,9 @@ class ArchmageTest(GameTestBase):
         self.archmage.mana = 6
         self.alice.health = 3
         self.bob.health = 3
-        self.archmage.play(Fireball, caller=self.archmage, target=self.alice)
-        self.archmage.play(Fireball, caller=self.archmage, target=self.bob)
+        alice_ball = self.archmage.play(Fireball, caller=self.archmage, target=self.alice)
+        bob_ball = self.archmage.play(Fireball, caller=self.archmage, target=self.bob)
         self.game.play_turn()
-
-        alice_ball = Fireball(self.archmage, self.archmage, self.alice)
-        bob_ball = Fireball(self.archmage, self.archmage, self.bob)
 
         self.assertEventsEqual(
             self.game.pop_new_events(), [
@@ -97,11 +93,10 @@ class ArchmageTest(GameTestBase):
         self.game.turn.turn_type = TurnType.DIVINE_POWER
 
         self.archmage.mana = 4
-        self.archmage.play(Fireball, caller=self.archmage, target=self.alice)
+        alice_ball = self.archmage.play(Fireball, caller=self.archmage, target=self.alice)
         self.archmage.play(Fireball, caller=self.archmage, target=self.bob)
         self.game.play_turn()
 
-        alice_ball = Fireball(self.archmage, self.archmage, self.alice)
         self.assertEventsEqual(
             self.game.pop_new_events(), [
                 ActionPlayedEvent(alice_ball),
@@ -112,14 +107,13 @@ class ArchmageTest(GameTestBase):
         self.game.turn.turn_type = TurnType.DIVINE_POWER
 
         self.archmage.mana = 3
-        self.archmage.play(ManaStorm, caller=self.archmage)
+        mana_storm = self.archmage.play(ManaStorm, caller=self.archmage)
         self.game.play_turn()
         self.assertEqual(self.alice.health, 2)
         self.assertEqual(self.bob.health, 2)
         self.assertEqual(self.archmage.health, 1)
         self.assertEqual(self.archmage.mana, 0)
 
-        mana_storm = ManaStorm(self.archmage, self.archmage, None)
         self.assertEventsEqual(
             self.game.pop_new_events(), [
                 ActionPlayedEvent(mana_storm),
@@ -131,7 +125,7 @@ class ArchmageTest(GameTestBase):
         self.game.turn.turn_type = TurnType.DIVINE_POWER
 
         self.archmage.mana = 8
-        self.archmage.play(ManaStorm, caller=self.archmage)
+        mana_storm = self.archmage.play(ManaStorm, caller=self.archmage)
         self.archmage.play(ManaStorm, caller=self.archmage)
         self.game.play_turn()
         self.assertEqual(self.alice.health, 1)
@@ -139,7 +133,6 @@ class ArchmageTest(GameTestBase):
         self.assertEqual(self.archmage.health, 1)
         self.assertEqual(self.archmage.mana, 2)
 
-        mana_storm = ManaStorm(self.archmage, self.archmage, None)
         self.assertEventsEqual(
             self.game.pop_new_events(), [
                 ActionPlayedEvent(mana_storm),
@@ -155,17 +148,15 @@ class ArchmageTest(GameTestBase):
         self.game.turn.turn_type = TurnType.DIVINE_POWER
 
         self.archmage.mana = 5
-        self.archmage.play(ChainLightning, caller=self.archmage, target=self.alice)
-        self.alice.attack(self.bob)
+        chain_lightning_action = self.archmage.play(ChainLightning, caller=self.archmage, target=self.alice)
+        alice_attack = self.alice.attack(self.bob)
         self.game.play_turn()
         self.assertEqual(self.alice.health, 2)
         self.assertEqual(self.bob.health, 1)
         self.assertEqual(self.archmage.health, 1)
         self.assertEqual(self.archmage.mana, 3)
 
-        chain_lightning_action = ChainLightning(self.archmage, self.archmage, self.alice)
         chain_lightning_damage = ChainLightningDamage(self.archmage, None, None)
-        alice_attack = BaseAttack(self.alice, self.alice, self.bob)
         self.assertEventsEqual(
             self.game.pop_new_events(), [
                 ActionPlayedEvent(chain_lightning_action),
@@ -192,17 +183,15 @@ class ArchmageTest(GameTestBase):
         self.game.start_new_turn()
 
         self.archmage.mana = 3
-        self.archmage.play(ChainLightning, caller=self.archmage, target=self.alice)
-        self.alice.attack(self.bob)
+        chain_lightning_action = self.archmage.play(ChainLightning, caller=self.archmage, target=self.alice)
+        alice_attack = self.alice.attack(self.bob)
         self.game.play_turn()
         self.assertEqual(self.alice.health, 3)
         self.assertEqual(self.bob.health, 1)
         self.assertEqual(self.archmage.health, 1)
         self.assertEqual(self.archmage.mana, 1)
 
-        chain_lightning_action = ChainLightning(self.archmage, self.archmage, self.alice)
         chain_lightning_damage = ChainLightningDamage(self.archmage, None, None)
-        alice_attack = BaseAttack(self.alice, self.alice, self.bob)
 
         self.assertEventsEqual(
             self.game.pop_new_events(), [

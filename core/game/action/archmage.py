@@ -1,6 +1,7 @@
 from core.game import effects
-from core.game.action.common import Action
+from core.game.action.common import Action, ApplyEffectAction
 from core.game.common import Step, DamageType, TurnType
+from core.game.effects.archmage import ElementalProtectionEffect, ChainLightningEffect
 from core.game.effects.common import CharacterEffect, TimedCharacterEffect
 from core.game.effects.priorities import EffectPriority
 from core.game.events.common import DamageEvent
@@ -33,7 +34,7 @@ class ManaStorm(Action):
             c.receive_damage(base_damage, DamageType.BURNING, self)
 
 
-class ChainLightning(Action):
+class ChainLightning(ApplyEffectAction):
     mana_cost = 2
     cooldown = -1
 
@@ -41,50 +42,12 @@ class ChainLightning(Action):
 
     turn_step = Step.NIGHT_PASSIVE_STEP
 
+    effects = [ApplyEffectAction.effect(ChainLightningEffect, {'action': 'self'})]
+
     def play(self, game):
         self.target.add_effect(ChainLightningEffect(self))
 
-
-class ChainLightningEffect(CharacterEffect):
-    priority = EffectPriority.TURN_END_DAMAGE_PRIORITY
-
-    def __init__(self, action):
-        self.action = action
-
-    def on_turn_end(self, character, turn):
-        battles = {(e.character, e.action.executor)
-               for e in character.game.new_events
-               if isinstance(e, DamageEvent) and e.action.target is not None}
-        battles |= {(b, a) for a, b in battles}
-
-        first_order_targets = {t for t, e in battles if e is character}
-        first_order_targets -= {character}
-
-        second_order_targets =  {t for t, e in battles if e in first_order_targets}
-        second_order_targets -= first_order_targets
-        second_order_targets -= {character}
-
-        strength = 2 if turn.turn_type is TurnType.MAGIC_POWER else 1
-        damage_action = ChainLightningDamage(self.action.caller, None, None)
-        character.receive_damage(strength, DamageType.BURNING, damage_action)
-        for c in first_order_targets:
-            c.receive_damage(strength, DamageType.BURNING, damage_action)
-
-        if strength > 1:
-            for c in second_order_targets:
-                c.receive_damage(strength - 1, DamageType.BURNING, damage_action)
-
-        character.on_turn_end(turn)
-
-    def passed(self):
-        return True
-
-
-class ChainLightningDamage(Action):
-    turn_step = Step.NIGHT_ACTIVE_STEP
-
-
-class ElementalProtection(Action):
+class ElementalProtection(ApplyEffectAction):
     mana_cost = 0
     cooldown = -1
 
@@ -92,14 +55,4 @@ class ElementalProtection(Action):
 
     turn_step = Step.DAY_ACTIVE_STEP
 
-    def play(self, game):
-        self.target.add_effect(ElementalProtectionEffect(1))
-
-
-class ElementalProtectionEffect(TimedCharacterEffect):
-    priority = EffectPriority.RECEIVE_DAMAGE_CANCELING_PRIORITY
-
-    def receive_damage(self, character, strength, type, action):
-        if action.__class__ in {ChainLightningDamage, ManaStorm, Fireball}:
-            return
-        character.receive_damage(strength=strength, type=type, action=action)
+    effects = [ApplyEffectAction.effect(ElementalProtectionEffect, defaults={'turns': 1})]

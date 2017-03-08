@@ -5,10 +5,7 @@ class Event:
     __hash__ = None
 
     def __eq__(self, other):
-        if hasattr(other, '__dict__'):
-            return self.__dict__ == other.__dict__
-        return False
-
+        return other.__class__ is self.__class__ and self.__dict__ == other.__dict__
 
 
 class DeathEvent(Event):
