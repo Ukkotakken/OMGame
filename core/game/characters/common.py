@@ -131,7 +131,9 @@ class Character:
 
     @check_effects
     def vote(self, character):
-        self.game.log(VoteInstantEvent(self.play(Vote, caller=self, target=character)))
+        vote = self.play(Vote, caller=self, target=character)
+        self.game.log(VoteInstantEvent(vote))
+        return vote
 
     @check_effects
     def attack(self, character):

@@ -12,12 +12,12 @@ class RetributionDamageAction(ActionBase):
 
 
 class RetributionEffect(CharacterEffect):
-    priority = EffectPriority.RECEIVE_DAMAGE_AFTER_DAMAGE_PRIORITY
+    priority = EffectPriority.RECEIVE_DAMAGE_DAMAGE_ATTACKER_PRIORITY
 
     def receive_damage(self, character, strength, type, action):
         result = character.receive_damage(strength, type, action)
-        if action.executor is not None:
-            action.executor.receive_damage(1, DamageType.PHISICAL, RetributionDamageAction)
+        if action.executor is not None and action.target is not None:
+            action.executor.receive_damage(1, DamageType.PHISICAL, RetributionDamageAction(None, None, None))
         return result
 
 

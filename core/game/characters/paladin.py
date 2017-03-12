@@ -2,9 +2,10 @@ from core.game.action.paladin import LayOnHands, DivineShield, Bodyguard, SoulSa
 from core.game.characters.common import Character
 from core.game.common import DamageType, Sides, TurnType
 from core.game.effects.common import ReceiveManaEffect
+from core.game.effects.paladin import RetributionEffect
 
 
-class Investigator(Character):
+class Paladin(Character):
     start_health = 4
     start_max_health = 4
     start_mana = 1
@@ -19,4 +20,4 @@ class Investigator(Character):
     role_effects_list = [
         RetributionEffect(),
         ReceiveManaEffect({TurnType.MAGIC_POWER: 0, TurnType.DIVINE_POWER: 1})]
-    role_sides = {Sides.SIDE_147, Sides.SIDE_478, Sides.SIDE_489}
+    role_sides = {Sides.SIDE_147, Sides.SIDE_478, Sides.SIDE_789}
