@@ -21,3 +21,11 @@ class WrongTurnException(GameException):
 class BanishedFromClassException(GameException):
     def __init__(self):
         pass
+
+class NoSuchPlayerException(GameException):
+    def __init__(self, user_id):
+        self.user_id = user_id
+
+class MissingArgumentException(GameException):
+    def __init__(self, argument):
+        self.argument = argument

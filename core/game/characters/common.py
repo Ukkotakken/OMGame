@@ -43,6 +43,7 @@ class Character:
 
     def __init__(self, player):
         self.player = player
+        player.character = self
         self.player.set_character(self)
         self.effects_progress = {}
 
@@ -212,3 +213,18 @@ class Character:
 
     def remove_passed_effects(self):
         self.effects = [e for e in self.effects if not e.passed()]
+
+    @check_effects
+    def in_play(self):
+        return self.state is not State.DEAD
+
+    @check_effects
+    def status(self):
+        return {
+            'health': self.health,
+            'max_health': self.max_health,
+            'mana': self.mana,
+            'base_attack': self.base_attack,
+            'vote_strength': self.vote_strength,
+            'abilities': list(self.abilities.keys())
+        }
