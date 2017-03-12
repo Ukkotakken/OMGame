@@ -16,4 +16,4 @@ class Investigator(Character):
         Investigation]
     role_effects_list = [
         AwarenessEffect()]
-    role_sides = {Sides.SIDE_123, Sides.SIDE_124, Sides.SIDE_236}
+    role_sides = {Sides.SIDE_124, Sides.SIDE_147, Sides.SIDE_478}
