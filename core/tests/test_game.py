@@ -129,7 +129,6 @@ class GameBasicsTest(GameTestBase):
                 action=attack_action)]
         self.assertEventsEqual(new_events, expected_events)
 
-
     def testAttack_kill(self):
         self.bob.health = 1
         self.next_turn_no_events()
@@ -222,6 +221,7 @@ class GameBasicsTest(GameTestBase):
         expected_events = sum([
                                   [VoteEvent(v), ActionPlayedEvent(v)] for v in vote_actions], [])
         self.assertEventsEqual(new_events, expected_events)
+
 
 def filter_by_class(events, event_class):
     return [e for e in events if e.__class__ is event_class]
