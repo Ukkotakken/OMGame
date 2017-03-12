@@ -23,6 +23,6 @@ class Investigation(ApplyEffectAction):
 
     effects = [
         ApplyEffectAction.effect(CantPlayActionEffect, {}, 'executor', {'turns': 1}),
-        ApplyEffectAction.effect(InvestigationEffect)]
+        ApplyEffectAction.effect(InvestigationEffect, {'investigator': 'executor'})]
 
     name = 'investigation'
