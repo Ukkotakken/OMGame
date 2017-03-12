@@ -24,8 +24,11 @@ class GameTestBase(unittest.TestCase):
         self.game.pop_new_events()
 
     def next_turn_no_events(self):
+        self.next_turn_expect_events([])
+
+    def next_turn_expect_events(self, events):
         self.game.play_and_start_new_turn()
-        self.assertEventsEqual(self.game.pop_new_events(), [])
+        self.assertEventsEqual(self.game.pop_new_events(), events)
 
     def assertEventsEqual(
             self,
