@@ -44,7 +44,7 @@ class Action(ActionBase):
 
     @classmethod
     def compose_description(cls):
-        result = 'Usage: /%s %s\n' % (cls.name, ' '.join(a.description for a in cls.arguments))
+        result = 'Usage: /play %s %s\n' % (cls.name, ' '.join(a.description for a in cls.arguments))
         result += 'Cooldown: %s\n' % ('No cooldown' if cls.cooldown is -1 else cls.cooldown)
         if cls.mana_cost is not None:
             result += 'Mana cost: %s\n' % cls.mana_cost
