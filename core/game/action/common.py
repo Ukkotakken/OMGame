@@ -23,14 +23,33 @@ class Action(ActionBase):
     mana_cost = None
     cooldown = 0
     can_cancel = True
+    arguments = []
+
 
     @property
     def turn_step(self):
         raise NotImplementedError("Action subclasses should have turn step setted!")
 
+    @property
+    def description(self):
+        raise NotImplementedError("Action subclasses should have description setted!")
+
+    @property
+    def name(self):
+        raise NotImplementedError("Action subclasses should have name setted!")
+
     @abstractmethod
     def play(self, game):
         pass
+
+    @classmethod
+    def compose_description(cls):
+        result = 'Usage: /%s %s\n' % (cls.name, ' '.join(a.description for a in cls.arguments))
+        result += 'Cooldown: %s\n' % ('No cooldown' if cls.cooldown is -1 else cls.cooldown)
+        if cls.mana_cost is not None:
+            result += 'Mana cost: %s\n' % cls.mana_cost
+        result += '\n'
+        result = cls.description
 
     def play_user_visible_effect(self, character):
         pass

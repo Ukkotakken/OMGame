@@ -7,7 +7,6 @@ from telegram.ext import Updater
 from core.game.characters.common import Character
 from core.game.game import Game
 
-
 class Player:
     def __init__(self, user_id, chat_id, bot=None):
         self.chat_id = chat_id
@@ -26,9 +25,46 @@ class Player:
         else:
             self.game_handler = game_handler
             game_handler.add_player(self)
+            self.send_message("You joined game %s" % game_handler.chat_id)
 
     def set_character(self, character):
         self.character = character
+
+    def status(self):
+        if self.game_handler is None:
+            self.send_message("You are not participating in any game yet.")
+        else:
+            self.send_message("You are in a game %s" % self.game_handler.chat_id)
+            if self.character is None:
+                self.send_message("Game is not yet started")
+            else:
+                self.send_message(self.send_status_message(self.character.status()))
+
+    def send_status_message(self, status):
+        status_msg = "Your character status is following:\n"
+        status_msg += "\tHealth: %s/%s\n" % (status.get("health", 0), status.get("max_health", 0))
+        if status.get("mana") is not None:
+            status_msg += "\tMana: %s\n" % status.get("mana")
+        if status.get("base_attack"):
+            status_msg += "\tBase attack: %s (type /attack player_id during night to attack)\n" % status.get("base_attack")
+        status_msg += "\tVote strength: %s (type /vote player_id during day to vote)\n" % status.get("vote_strength")
+        if status.get("abilities"):
+            status_msg += "\tYou have following abilities:\n"
+            for (ability, action) in status.get("abilities").items():
+                status_msg += "\t\t%s\n" % ability
+        self.send_message(status_msg)
+
+    def desc(self, ability_name):
+        if self.character is None:
+            self.send_message("You should be in a game to use this command")
+            return
+        if ability_name not in self.character.abilities:
+            self.send_message("You don't posess such an ability")
+            return
+        ability = self.character.abilities[ability_name]
+        self.send_message(ability.description)
+
+
 
 
 class GameHandler:
@@ -42,13 +78,22 @@ class GameHandler:
         if user_id is None:
             self.bot.sendMessage(chat_id=self.chat_id, text=text)
         elif user_id in self.players:
-            self.players[user_id].message(text)
+            self.players[user_id].send_message(text)
         else:
             # TODO(ukkotakken): Add no such user error
             pass
 
     def add_player(self, player):
         self.players[player.user_id] = player
+        self.send_message("Player %s joined the game!" % player.user_id)
+
+    def end_turn(self, player):
+        self.game.play_and_start_new_turn(player.character)
+        self.resolve_events()
+
+    def resolve_events(self):
+        for event in self.game.pop_new_events():
+            event.play(self)
 
     def start_game(self, bot):
         self.game = Game([Character(player) for player in self.players.values()], self)
@@ -61,10 +106,10 @@ class GameHandler:
 
 def extract_player_and_arguments(method):
     def extractor(self, bot, update):
-        user_id = update.message.from_user.id
+        user_id = int(update.message.from_user.id)
         player = self.players.get(user_id)
         args = update.message.text.split()[1:]
-        return method(player, *args)
+        return method(self, player, *args)
 
     return extractor
 
@@ -94,7 +139,7 @@ class Handler:
                 update.message.reply_text("Game %s is in progress." % (game_chat_id))
 
     def join_game(self, bot, update):
-        if update.message.chat.type is not Chat.PRIVATE:
+        if update.message.chat.type != Chat.PRIVATE:
             update.message.reply_text("You should send it to a private chat!")
             return
 
@@ -113,7 +158,10 @@ class Handler:
         if game_handler is None:
             update.message.reply_text("Start with: /setup_game")
         elif game_handler.game is None:
-            game_handler.start_game()
+            game_handler.start_game(bot)
+            update.message.reply_text("Game started! Players in game: %s" %
+                                      ', '.join(map(str, game_handler.players.keys())))
+            game_handler.resolve_events()
         else:
             update.message.reply_text("Game is in progress!")
 
@@ -122,26 +170,31 @@ class Handler:
         pass
 
     @extract_player_and_arguments
+    def desc(self, player, ability_name):
+        player.desc(ability_name)
+
+
+    @extract_player_and_arguments
     def vote(self, player, user_id):
-        target_player = player.game_handler.players.get(user_id)
+        target_player = player.game_handler.players.get(int(user_id))
         if target_player is None:
-            player.message("No such player in your game!")
-        player.character.vote(target_player.character, caller=player.character)
+            player.send_message("No such player in your game!")
+        player.character.vote(target_player.character)
 
     @extract_player_and_arguments
     def attack(self, player, user_id):
-        target_player = player.game_handler.players.get(user_id)
+        target_player = player.game_handler.players.get(int(user_id))
         if target_player is None:
-            player.message("No such player in your game!")
-        player.character.attack(target_player.character, caller=player.character)
+            player.send_message("No such player in your game!")
+        player.character.attack(target_player.character)
 
     @extract_player_and_arguments
     def end_turn(self, player):
-        player.game_handler.game.play_and_start_new_turn(player.character)
+        player.game_handler.end_turn(player)
 
     @extract_player_and_arguments
-    def stats(self, player):
-        player.message(player.stats())
+    def status(self, player):
+        player.status()
 
     def help(self, bot, update):
         pass
@@ -154,12 +207,17 @@ with open('token') as t:
 updater = Updater(token=token)
 dispatcher = updater.dispatcher
 
+print("bot created")
 h = Handler()
+dispatcher.add_handler(CommandHandler("setup_game", h.setup_game))
+dispatcher.add_handler(CommandHandler("join_game", h.join_game))
 dispatcher.add_handler(CommandHandler("start_game", h.start_game))
 dispatcher.add_handler(CommandHandler("vote", h.vote))
 dispatcher.add_handler(CommandHandler('attack', h.attack))
-dispatcher.add_handler(CommandHandler('play_and_start_new_turn', h.end_turn))
-dispatcher.add_handler(CommandHandler('stats', h.stats))
+dispatcher.add_handler(CommandHandler('end_turn', h.end_turn))
+dispatcher.add_handler(CommandHandler('status', h.status))
 dispatcher.add_handler(MessageHandler(Filters.command, h.help))
+print("handler setted up")
 
 updater.start_polling()
+print("started_polling")
