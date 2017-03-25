@@ -1,11 +1,7 @@
-from core.game import effects
 from core.game.action.arguments import CharacterArgument
 from core.game.action.common import Action, ApplyEffectAction
 from core.game.common import Step, DamageType, TurnType
 from core.game.effects.archmage import ElementalProtectionEffect, ChainLightningEffect
-from core.game.effects.common import CharacterEffect, TimedCharacterEffect
-from core.game.effects.priorities import EffectPriority
-from core.game.events.common import DamageEvent
 
 
 class Fireball(Action):
@@ -15,7 +11,7 @@ class Fireball(Action):
     turn_step = Step.NIGHT_ACTIVE_STEP
 
     name = 'fireball'
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         Burns target by 1 point of damage (2 during magic turn).
     """
@@ -48,7 +44,7 @@ class ChainLightning(ApplyEffectAction):
     cooldown = -1
 
     name = 'chain_lightning'
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         Strikes a lighting into the target.
         At the end of the night target and all whom she attacked/attacked her receive 1 (2) points of burning damage.
@@ -68,7 +64,7 @@ class ElementalProtection(ApplyEffectAction):
     cooldown = -1
 
     name = 'elemental_protection'
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         Target will not be receive damage from your spells during the following night.
     """

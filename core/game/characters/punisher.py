@@ -14,13 +14,13 @@ class Punisher(Character):
     role_vote_strength = 1
     role_attack_type = DamageType.PHISICAL
     role_abilities_list = [
-        PunisherVote,
         Punishment,
         Bloodhound]
     role_effects_list = [
         ReceiveManaEffect({TurnType.MAGIC_POWER: 1, TurnType.DIVINE_POWER: 0}),
         Penance()]
     role_sides = {Sides.SIDE_123, Sides.SIDE_124, Sides.SIDE_147}
+    vote_action = PunisherVote
 
     def __init__(self, *args, **kwargs):
         self.guilty_degrees = {}

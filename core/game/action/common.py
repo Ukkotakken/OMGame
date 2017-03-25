@@ -1,6 +1,7 @@
 import inspect
 from abc import ABCMeta, abstractmethod
 
+from core.game.action.arguments import CharacterArgument
 from core.game.common import Step
 from core.game.events.common import VoteEvent
 
@@ -44,12 +45,14 @@ class Action(ActionBase):
 
     @classmethod
     def compose_description(cls):
-        result = 'Usage: /play %s %s\n' % (cls.name, ' '.join(a.description for a in cls.arguments))
+        result = '%s %s\n' % (cls.name, ' '.join(a.name for a in cls.arguments))
         result += 'Cooldown: %s\n' % ('No cooldown' if cls.cooldown is -1 else cls.cooldown)
         if cls.mana_cost is not None:
             result += 'Mana cost: %s\n' % cls.mana_cost
         result += '\n'
-        result = cls.description
+        result += cls.description
+        return result
+
 
     def play_user_visible_effect(self, character):
         pass
@@ -63,6 +66,10 @@ class Vote(Action):
     can_cancel = False
 
     name = 'vote'
+    arguments = [CharacterArgument()]
+    description = """
+        You will vote for imprisoning target.
+    """
 
     def play(self, game):
         self.target.add_votes(self.executor.vote_strength)
@@ -73,6 +80,10 @@ class BaseAttack(Action):
     turn_step = Step.NIGHT_ACTIVE_STEP
 
     name = 'base_attack'
+    arguments = [CharacterArgument()]
+    description = """
+        You will damage target by your base attack value.
+    """
 
     def play(self, game):
         self.target.receive_damage(

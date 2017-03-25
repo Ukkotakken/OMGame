@@ -15,7 +15,7 @@ class RoundUp(ApplyEffectAction):
         ApplyEffectAction.effect(RoundUpEffect)]
 
     name = 'round_up'
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         This night target will be damaged by 2 points during a round-up.
         You can't do your basic attack this night.
@@ -33,7 +33,7 @@ class Investigation(ApplyEffectAction):
         ApplyEffectAction.effect(InvestigationEffect, {'investigator': 'executor'})]
 
     name = 'investigation'
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         You will find out the target's role by the next morning.
         You can't do your basic attack this night.

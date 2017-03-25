@@ -2,7 +2,7 @@ from core.game.action.common import Vote, BaseAttack
 from core.game.common import DamageType, State
 from core.game.events.common import DamageEvent, DeathEvent, ImprisonEvent, VoteInstantEvent
 from core.game.exceptions import NoActionInQueueException, UncancelableActionException, WrongTurnException
-from core.game.turn import DayTurn, NightTurn
+from core.game.turn import NightTurn
 
 
 def check_effects(method):
@@ -40,6 +40,8 @@ class Character:
     role_abilities_list = []
     role_effects_list = []
     role_sides = set()
+    attack_action = BaseAttack
+    vote_action = Vote
 
     def __init__(self, player):
         self.player = player
