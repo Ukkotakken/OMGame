@@ -3,10 +3,14 @@ class Player:
         self.chat_id = chat_id
         self.user_id = user_id
         self.game_handler = None
+        self.character = None
         self.bot = bot
 
     def send_message(self, text):
-        self.bot.sendMessage(chat_id=self.chat_id, text=text)
+        self.game_handler.send_message(text, user_id=self.user_id)
+
+    def send_status(self):
+        self.game_handler.send_status(user_id=self.user_id)
 
     def join_game(self, game_handler):
         if self.game_handler is not None:
@@ -23,15 +27,15 @@ class Player:
 
     def status(self):
         if self.game_handler is None:
-            self.send_message("You are not participating in any game yet.")
+            return "You are not participating in any game yet."
         else:
-            self.send_message("You are in a game %s" % self.game_handler.chat_id)
+            message_start = "You are in a game %s\n" % self.game_handler.chat_id
             if self.character is None:
-                self.send_message("Game is not yet started")
+                return message_start + "Game is not yet started"
             else:
-                self.send_message(self.send_status_message(self.character.status()))
+                return message_start + self.make_status_message(self.character.status())
 
-    def send_status_message(self, status):
+    def make_status_message(self, status):
         status_msg = "Your character status is following:\n"
         status_msg += "\tHealth: %s/%s\n" % (status.get("health", 0), status.get("max_health", 0))
         if status.get("mana") is not None:
@@ -43,14 +47,82 @@ class Player:
             status_msg += "\tYou have following abilities:\n"
             for (ability, action) in status.get("abilities").items():
                 status_msg += "\t\t%s\n" % ability
-        self.send_message(status_msg)
+        return status_msg
 
-    def desc(self, ability_name):
-        if self.character is None:
-            self.send_message("You should be in a game to use this command")
-            return
-        if ability_name not in self.character.abilities:
-            self.send_message("You don't posess such an ability")
-            return
-        ability = self.character.abilities[ability_name]
-        self.send_message(ability.description)
+    def menu(self, query_line=""):
+        query = query_line.strip().split()
+        menus = {
+            "play": self.play_menu,
+            "vote": self.vote_menu,
+            "attack": self.attack_menu
+        }
+        if query and query[0] != "menu":
+            action = query[0]
+            message, buttons = menus.get(action, self.error_menu)(query)
+            buttons.append(("<- Back", ' '.join(query[:-1]) or 'menu'))
+        else:
+            message, buttons = self.default_menu()
+        return message, buttons
+
+    def default_menu(self, query=None):
+        text = self.status()
+        if not self.character:
+            return text, []
+        actions = [("Play", "play")]
+        if self.character.vote_action.turn_step in self.character.game.turn.STEP_ORDER:
+            actions.append(("Vote", "vote"))
+        elif self.character.attack_action.turn_step in self.character.game.turn.STEP_ORDER:
+            actions.append(("Attack", "attack"))
+        return text, actions
+
+    def error_menu(self, query, message=""):
+        text = "Error encountered while processing query %s. %s" % (' '.join(query), message)
+        return text, [("Main menu", "")]
+
+    def vote_menu(self, query):
+        return self.action_argument_menu(query, self.character.vote_action, query[1:])
+
+    def attack_menu(self, query):
+        return self.action_argument_menu(query, self.character.attack_action, query[1:])
+
+    def status_menu(self, query):
+        # TODO(ukkotakken): Add action query and cancel action button here.
+        return self.status(), []
+
+    def play_menu(self, query):
+        query_base = ' '.join(query) + ' '
+        if not self.character:
+            return self.error_menu(query, message="You don't have a character to play an action.")
+        if len(query) == 1:
+            buttons = [(a.name, query_base + a.name) for a in self.character.abilities]
+            return "Select ability:", buttons
+        if query[1] not in self.character.abilities:
+            return self.error_menu(query, message="You don't have such ability.")
+        action = self.character.abilities[query[1]]
+        return self.action_argument_menu(query_base, action, query[2:])
+
+    def action_argument_menu(self, query, action, arguments):
+        turn = self.character.game.turn
+        if action.turn_step not in turn.STEP_ORDER:
+            if len(arguments) >= len(action.arguments):
+                return "Action %s can't be played during %s." % (action.name, turn.NAME), []
+        if len(action.arguments) < len(arguments):
+            # All arguments are filled. We should apply the action.
+            kwargs = {"caller": self.character}
+            for arg, value in zip(action.arguments, arguments):
+                kwargs[arg.argname] = arg.transform(value, self.game_handler)
+            self.character.play(action, **kwargs)
+            return "You will try to play application %s" % query, [("Menu", "menu")]
+        if len(action.arguments) == len(arguments):
+            query.append("+")
+            return "Approve %s call?" % query, [("Yes", ' '.join(query))]
+        argument = action.arguments[len(arguments)]
+        description = action.compose_description()
+        if action.turn_step in turn.STEP_ORDER:
+            description += '\n\nSelect %s:' % argument.name
+            query_base = ' '.join(query) + ' '
+            buttons = [(name, query_base + opt) for name, opt in  argument.list_options(self.game_handler)]
+            return description, buttons
+        else:
+            description += "\n\nAction %s can't be played during %s." % (action.name, turn.NAME)
+            return description, []

@@ -56,7 +56,7 @@ class Punishment(ApplyEffectAction):
 class Bloodhound(ApplyEffectAction):
     mana_cost = 1
     turn_step = Step.DAY_ACTIVE_STEP
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         You will find everybody who attacked or damaged the target during the night.
         If target is killed and it is magic turn, you will know the roles of the killers.

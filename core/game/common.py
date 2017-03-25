@@ -16,6 +16,11 @@ class State(Enum):
     IMPRISONED = 3
 
 
+class TimeOfDay(Enum):
+    DAY = "Day"
+    NIGHT = "Night"
+
+
 @unique
 class Sides(Enum):
     SIDE_123 = 1

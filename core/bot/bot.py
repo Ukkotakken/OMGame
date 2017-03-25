@@ -3,20 +3,16 @@ import logging
 from telegram.chat import Chat
 from telegram.ext import CommandHandler, MessageHandler, Filters
 from telegram.ext import Updater
+from telegram.ext.callbackqueryhandler import CallbackQueryHandler
+from telegram.inlinekeyboardbutton import InlineKeyboardButton
+from telegram.inlinekeyboardmarkup import InlineKeyboardMarkup
 
 from core.bot.game_handler import GameHandler
 from core.bot.player import Player
 
 
-def extract_player_and_arguments(method):
-    def extractor(self, bot, update):
-        user_id = int(update.message.from_user.id)
-        player = self.players.get(user_id)
-        args = update.message.text.split()[1:]
-        return method(self, player, *args)
-
-    return extractor
-
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
 
 class Handler:
     def __init__(self):
@@ -69,39 +65,37 @@ class Handler:
         else:
             update.message.reply_text("Game is in progress!")
 
-    @extract_player_and_arguments
-    def play(self, player, ability_name, *args):
-        pass
-
-    @extract_player_and_arguments
-    def desc(self, player, ability_name):
-        player.desc(ability_name)
-
-    @extract_player_and_arguments
-    def vote(self, player, user_id):
-        target_player = player.game_handler.players.get(int(user_id))
-        if target_player is None:
-            player.send_message("No such player in your game!")
-        player.character.vote(target_player.character)
-
-    @extract_player_and_arguments
-    def attack(self, player, user_id):
-        target_player = player.game_handler.players.get(int(user_id))
-        if target_player is None:
-            player.send_message("No such player in your game!")
-        player.character.attack(target_player.character)
-
-    @extract_player_and_arguments
-    def end_turn(self, player):
+    def end_turn(self, bot, update):
+        player = self.players.get(int(update.message.from_user.id))
         player.game_handler.end_turn(player)
 
-    @extract_player_and_arguments
-    def status(self, player):
-        player.status()
+    def menu(self, bot, update):
+        player = self.players.get(int(update.message.from_user.id))
+        text, buttons = player.menu()
+        keyboard = [[InlineKeyboardButton(b_text, callback_data=b_callback)] for b_text, b_callback in buttons]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        update.message.reply_text(text, reply_markup=reply_markup)
+
+    def menu_button(self, bot, update):
+        query = update.callback_query.data
+        player = self.players.get(int(update.callback_query.from_user.id))
+        text, buttons = player.menu(query_line=query)
+        keyboard = [[InlineKeyboardButton(b_text, callback_data=b_callback)] for b_text, b_callback in buttons]
+        if keyboard:
+            reply_markup = InlineKeyboardMarkup(keyboard)
+        else:
+            reply_markup = None
+
+        bot.editMessageText(text=text,
+                            reply_markup=reply_markup,
+                            chat_id=update.callback_query.message.chat_id,
+                            message_id=update.callback_query.message.message_id)
 
     def help(self, bot, update):
         pass
 
+    def error(self, bot, update, error):
+        print(error)
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -115,11 +109,12 @@ h = Handler()
 dispatcher.add_handler(CommandHandler("setup_game", h.setup_game))
 dispatcher.add_handler(CommandHandler("join_game", h.join_game))
 dispatcher.add_handler(CommandHandler("start_game", h.start_game))
-dispatcher.add_handler(CommandHandler("vote", h.vote))
-dispatcher.add_handler(CommandHandler('attack', h.attack))
 dispatcher.add_handler(CommandHandler('end_turn', h.end_turn))
-dispatcher.add_handler(CommandHandler('status', h.status))
+dispatcher.add_handler(CommandHandler('menu', h.menu))
 dispatcher.add_handler(MessageHandler(Filters.command, h.help))
+dispatcher.add_error_handler(h.error)
+updater.dispatcher.add_handler(CallbackQueryHandler(h.menu_button))
+
 print("handler setted up")
 
 updater.start_polling()

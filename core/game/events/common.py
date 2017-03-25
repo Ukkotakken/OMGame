@@ -59,10 +59,7 @@ class TurnStartEvent(Event):
         game_handler.send_message("%s starts!" % self.turn.NAME)
         for character in game_handler.game.characters:
             if character.in_play():
-                character.player.send_message(
-                    "Your status:\n"
-                      + "\n".join("\t%s: %s" % x
-                                  for x in character.status().items()))
+                character.player.send_status()
 
 
 class TurnEndEvent(Event):

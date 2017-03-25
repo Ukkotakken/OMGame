@@ -7,7 +7,7 @@ from core.game.effects.paladin import DivineShieldEffect, BodyguardEffect, SoulS
 
 class SoulSave(ApplyEffectAction):
     name = "soulsave"
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         If target never attacked nor killed anybody, you will save it from prison.
     """
@@ -26,7 +26,7 @@ class SoulSave(ApplyEffectAction):
 
 class Bodyguard(ApplyEffectAction):
     name = "bodyguard"
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         If anybody will try to attack the target (by targeted attack) you will receive the damage instead of the target
         (and do the retribution, of course).
@@ -47,7 +47,7 @@ class Bodyguard(ApplyEffectAction):
 
 class DivineShield(ApplyEffectAction):
     name = "divine_shield"
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         You will absorb 2 points of damage this night. If it's a divine turn - you will absorb 10 points of damage.
     """
@@ -61,7 +61,7 @@ class DivineShield(ApplyEffectAction):
 
 class LayOnHands(Action):
     name = "lay_on_hands"
-    arguments = [CharacterArgument]
+    arguments = [CharacterArgument()]
     description = """
         You heal 1 health point of the target (2 during divine turn). You can't heal yourself.
     """
