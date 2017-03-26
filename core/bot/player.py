@@ -90,10 +90,6 @@ class Player:
     def attack_menu(self, query):
         return self.action_argument_menu(query, self.character.attack_action, query[1:])
 
-    def status_menu(self, query):
-        # TODO(ukkotakken): Add action query and cancel action button here.
-        return self.status(), []
-
     def play_menu(self, query):
         query_base = ' '.join(query) + ' '
         if not self.character:
