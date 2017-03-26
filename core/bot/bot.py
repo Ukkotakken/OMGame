@@ -1,3 +1,4 @@
+import json
 import logging
 
 from telegram.chat import Chat
@@ -11,30 +12,24 @@ from core.bot.game_handler import GameHandler
 from core.bot.player import Player
 
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-
 class Handler:
-    def __init__(self):
+    def __init__(self, bot_name):
         self.active_games = {}
         self.players = {}
+        self.bot_name = bot_name
 
     def setup_game(self, bot, update):
         game_chat_id = update.message.chat_id
+        join_game_url = "https://telegram.me/%s?start=%s" % (self.bot_name, game_chat_id)
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Join game!", url=join_game_url)]])
         if game_chat_id not in self.active_games:
             game_handler = GameHandler(bot, game_chat_id)
             self.active_games[game_chat_id] = game_handler
-            update.message.reply_text("""
-                Game created.
-                Send /join_game %s to this bot to join it.
-                Send /start_game to this chat to start it.""" % (game_chat_id))
+            update.message.reply_text("Game created.", reply_markup=reply_markup)
         else:
             game_handler = self.active_games[game_chat_id]
             if game_handler.game is None:
-                update.message.reply_text("""
-                    Game is already created.
-                    Send /join_game %s to this bot to join it.
-                    Send /start_game to this chat to start it.""" % (game_chat_id))
+                update.message.reply_text("Game is already created.", reply_markup=reply_markup)
             else:
                 update.message.reply_text("Game %s is in progress." % (game_chat_id))
 
@@ -49,21 +44,18 @@ class Handler:
 
         parts = update.message.text.split()[1:]
         if len(parts) == 1:
-            player.join_game(self.active_games.get(int(parts[0])))
+            game_handler = self.active_games.get(int(parts[0]))
+            if player.game_handler is not None:
+                player.send_message("You already participate in a game")
+            elif game_handler is None:
+                player.send_message("Game doesn't exist")
+            else:
+                player.game_handler = game_handler
+                game_handler.add_player(player)
+                text, reply_markup = self._prepare_menu(player)
+                bot.sendMessage(text=text, chat_id=player.chat_id, reply_markup=reply_markup)
         else:
-            update.message.reply_text("Usage: /join_game game_id")
-
-    def start_game(self, bot, update):
-        game_handler = self.active_games.get(update.message.chat_id)
-        if game_handler is None:
-            update.message.reply_text("Start with: /setup_game")
-        elif game_handler.game is None:
-            game_handler.start_game(bot)
-            update.message.reply_text("Game started! Players in game: %s" %
-                                      ', '.join(map(str, game_handler.players.keys())))
-            game_handler.resolve_events()
-        else:
-            update.message.reply_text("Game is in progress!")
+            update.message.reply_text("Usage: /start game_id")
 
     def end_turn(self, bot, update):
         player = self.players.get(int(update.message.from_user.id))
@@ -71,10 +63,15 @@ class Handler:
 
     def menu(self, bot, update):
         player = self.players.get(int(update.message.from_user.id))
+        text, reply_markup = self._prepare_menu(player)
+        update.message.reply_text(text, reply_markup=reply_markup)
+
+    def _prepare_menu(self, player):
         text, buttons = player.menu()
         keyboard = [[InlineKeyboardButton(b_text, callback_data=b_callback)] for b_text, b_callback in buttons]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        update.message.reply_text(text, reply_markup=reply_markup)
+        return text, reply_markup
+
 
     def menu_button(self, bot, update):
         query = update.callback_query.data
@@ -99,23 +96,22 @@ class Handler:
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-with open('token') as t:
-    token = t.read()
+with open('config.json') as json_data_file:
+    config = json.load(json_data_file)
+token = config['token']
+bot_name = config['bot']
+
 updater = Updater(token=token)
 dispatcher = updater.dispatcher
 
-print("bot created")
-h = Handler()
+h = Handler(bot_name)
+dispatcher.add_handler(CommandHandler("start", h.join_game))
 dispatcher.add_handler(CommandHandler("setup_game", h.setup_game))
-dispatcher.add_handler(CommandHandler("join_game", h.join_game))
-dispatcher.add_handler(CommandHandler("start_game", h.start_game))
 dispatcher.add_handler(CommandHandler('end_turn', h.end_turn))
 dispatcher.add_handler(CommandHandler('menu', h.menu))
 dispatcher.add_handler(MessageHandler(Filters.command, h.help))
 dispatcher.add_error_handler(h.error)
 updater.dispatcher.add_handler(CallbackQueryHandler(h.menu_button))
 
-print("handler setted up")
 
 updater.start_polling()
-print("started_polling")

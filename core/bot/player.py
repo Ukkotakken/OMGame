@@ -41,8 +41,8 @@ class Player:
         if status.get("mana") is not None:
             status_msg += "\tMana: %s\n" % status.get("mana")
         if status.get("base_attack"):
-            status_msg += "\tBase attack: %s (type /attack player_id during night to attack)\n" % status.get("base_attack")
-        status_msg += "\tVote strength: %s (type /vote player_id during day to vote)\n" % status.get("vote_strength")
+            status_msg += "\tBase attack: %s\n" % status.get("base_attack")
+        status_msg += "\tVote strength: %s\n" % status.get("vote_strength")
         if status.get("abilities"):
             status_msg += "\tYou have following abilities:\n"
             for (ability, action) in status.get("abilities").items():
@@ -56,8 +56,13 @@ class Player:
             "vote": self.vote_menu,
             "attack": self.attack_menu
         }
+        if self.game_handler is None:
+            return "Start a game in public chat with /setup_game", []
         if query and query[0] != "menu":
             action = query[0]
+            if action == "start_game":
+                self.game_handler.start_game()
+                return "OK!", []
             message, buttons = menus.get(action, self.error_menu)(query)
             buttons.append(("<- Back", ' '.join(query[:-1]) or 'menu'))
         else:
@@ -67,7 +72,7 @@ class Player:
     def default_menu(self, query=None):
         text = self.status()
         if not self.character:
-            return text, []
+            return text + "\nPress Ready when you are ready to start", [("Ready!", "start_game")]
         actions = [("Play", "play")]
         if self.character.vote_action.turn_step in self.character.game.turn.STEP_ORDER:
             actions.append(("Vote", "vote"))

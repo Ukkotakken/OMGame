@@ -44,9 +44,11 @@ class GameHandler:
         for event in self.game.pop_new_events():
             event.play(self)
 
-    def start_game(self, bot):
+    def start_game(self):
         self.game = Game([Character(player) for player in self.players.values()], self)
-        self.send_message(bot, """Game started!""")
+        self.send_message("Game started! Players in game: %s" %
+                                  ', '.join(map(str, self.players.keys())))
+        self.resolve_events()
 
     def end_game(self):
         # TODO(ukkotakken): implement end_game
