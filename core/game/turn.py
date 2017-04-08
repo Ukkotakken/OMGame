@@ -80,7 +80,7 @@ class NightTurn(Turn):
                 elif character.votes_number == max_votes:
                     # In case of a tie nobody goes to prison
                     max_votes_char = None
-                character.votes_number = 0  # TODO(ukkotakken): Test it
+                character.votes_number = 0
         if max_votes_char is not None:
             max_votes_char.imprison()
 

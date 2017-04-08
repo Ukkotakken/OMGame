@@ -1,7 +1,7 @@
 import unittest
 from collections import defaultdict
-from unittest.mock import MagicMock
 from typing import List
+from unittest.mock import MagicMock
 
 from core.game.action.common import Vote, BaseAttack
 from core.game.characters.common import Character
@@ -102,7 +102,6 @@ class GameBasicsTest(GameTestBase):
                 action=attack_action)]
         self.assertEventsEqual(new_events, expected_events)
 
-
     def testVote_failNight(self):
         self.next_turn_no_events()
         try:
@@ -110,6 +109,15 @@ class GameBasicsTest(GameTestBase):
         except WrongTurnException as e:
             self.assertEquals(e.ability, Vote)
             self.assertTrue(isinstance(e.turn, NightTurn))
+
+    def testVote_doesntAffectTomorrow(self):
+        vote_action = self.alice.vote(self.bob)
+        self.next_turn_expect_events([
+            VoteEvent(vote_action),
+            ActionPlayedEvent(vote_action),
+            ImprisonEvent(self.bob)])
+        self.next_turn_no_events()
+        self.next_turn_no_events()
 
     def testAttack(self):
         self.assertEquals(self.bob.health, 3)
