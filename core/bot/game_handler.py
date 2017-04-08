@@ -1,16 +1,17 @@
+from mongoengine.fields import IntField, ReferenceField, MapField
 from telegram.inlinekeyboardbutton import InlineKeyboardButton
 from telegram.inlinekeyboardmarkup import InlineKeyboardMarkup
 
 from core.game.characters.common import Character
 from core.game.game import Game
+from core.mongo.documents import GameHandlerDocument, PlayerDocument, GameDocument
 
 
-class GameHandler:
-    def __init__(self, bot, chat_id):
-        self.bot = bot
-        self.chat_id = chat_id
-        self.players = {}
-        self.game = None
+class GameHandler(GameHandlerDocument):
+    chat_id = IntField()
+    players = MapField(ReferenceField(PlayerDocument))
+    game = ReferenceField(GameDocument)
+    bot = None
 
     def send_message(self, text, user_id=None):
         if user_id is None:

@@ -15,7 +15,7 @@ def collect_sides(game):
     sides = set()
     for character in game.characters:
         if character.can_win():
-            sides |= character.sides
+            sides |= set(character.sides)
     return sides
 
 

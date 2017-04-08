@@ -1,10 +1,13 @@
-class Player:
-    def __init__(self, user_id, chat_id, bot=None):
-        self.chat_id = chat_id
-        self.user_id = user_id
-        self.game_handler = None
-        self.character = None
-        self.bot = bot
+from mongoengine.fields import IntField, ReferenceField
+
+from core.mongo.documents import PlayerDocument, GameHandlerDocument, CharacterDocument
+
+
+class Player(PlayerDocument):
+    chat_id = IntField()
+    user_id = IntField()
+    game_handler = ReferenceField(GameHandlerDocument)
+    character = ReferenceField(CharacterDocument)
 
     def send_message(self, text):
         self.game_handler.send_message(text, user_id=self.user_id)

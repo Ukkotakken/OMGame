@@ -1,3 +1,5 @@
+from mongoengine.fields import ReferenceField
+
 from core.game import characters
 from core.game.action.common import ActionBase
 from core.game.common import TurnType, DamageType
@@ -36,13 +38,17 @@ class ElementalProtectionEffect(TimedCharacterEffect):
             return
         character.receive_damage(strength=strength, type=type, action=action)
 
+
 class ChainLightningDamage(ActionBase):
     pass
 
+
 class ChainLightningEffect(CharacterEffect):
     priority = EffectPriority.TURN_END_DAMAGE_PRIORITY
+    action = ReferenceField(ActionBase)
 
     def __init__(self, action):
+        super().__init__()
         self.action = action
 
     def on_turn_end(self, character, turn):

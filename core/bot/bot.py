@@ -23,7 +23,7 @@ class Handler:
         join_game_url = "https://telegram.me/%s?start=%s" % (self.bot_name, game_chat_id)
         reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Join game!", url=join_game_url)]])
         if game_chat_id not in self.active_games:
-            game_handler = GameHandler(bot, game_chat_id)
+            game_handler = GameHandler(chat_id=game_chat_id)
             self.active_games[game_chat_id] = game_handler
             update.message.reply_text("Game created.", reply_markup=reply_markup)
         else:

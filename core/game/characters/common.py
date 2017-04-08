@@ -1,8 +1,12 @@
+from mongoengine.fields import FloatField, IntField, ListField, StringField, EmbeddedDocumentListField, DictField, \
+    ReferenceField
+
 from core.game.action.common import Vote, BaseAttack
 from core.game.common import DamageType, State
 from core.game.events.common import DamageEvent, DeathEvent, ImprisonEvent, VoteInstantEvent
 from core.game.exceptions import NoActionInQueueException, UncancelableActionException, WrongTurnException
 from core.game.turn import NightTurn
+from core.mongo.documents import CharacterDocument, EffectDocument, ActionDocument, GameDocument
 
 
 def check_effects(method):
@@ -30,13 +34,27 @@ def check_effects(method):
     return apply_effects
 
 
-class Character:
+class Character(CharacterDocument):
+    health = FloatField()
+    max_health = FloatField()
+    mana = FloatField()
+    sides = ListField(IntField())
+    state = StringField()
+    effects = EmbeddedDocumentListField(EffectDocument)
+    action_queue = ListField(ReferenceField(ActionDocument))
+    ability_played_time = DictField()
+    game = ReferenceField(GameDocument)
+    damaged_by = ListField(StringField)
+    damaged_by_characters = ListField(ReferenceField(CharacterDocument))
+    caused_damage = ListField(ReferenceField(CharacterDocument))
+    killed = ListField(ReferenceField(CharacterDocument))
+
     start_health = 3
     start_max_health = 3
     start_mana = 0
-    role_base_attack = 1
-    role_vote_strength = 1
-    role_attack_type = DamageType.PHISICAL
+    base_attack = 1
+    vote_strength = 1
+    attack_type = DamageType.PHISICAL
     role_abilities_list = []
     role_effects_list = []
     role_sides = set()
@@ -44,44 +62,36 @@ class Character:
     vote_action = Vote
 
     def __init__(self, player):
+        if not hasattr(self.__class__, 'abilities'):
+            self.__class__.abilities = {x.name: x for x in self.role_abilities_list}
+
+        super().__init__(
+            health=self.start_health,
+            max_health=self.start_max_health,
+            mana=self.start_mana,
+            sides=list(self.role_sides),
+            state=State.ALIVE,
+            effects=list(self.role_effects_list),
+            action_queue=[],
+            ability_played_time={}
+        )
         self.player = player
-        player.character = self
         self.player.set_character(self)
+
         self.effects_progress = {}
-
-        self.health = self.start_health
-        self.max_health = self.start_max_health
-        self.mana = self.start_mana
-        self.base_attack = self.role_base_attack
-        self.vote_strength = self.role_vote_strength
-        self.attack_type = self.role_attack_type
-        self.sides = self.role_sides
-        self.abilities = {x.name: x for x in self.role_abilities_list}
-        self.effects = list(self.role_effects_list)
-        self.state = State.ALIVE
-
         self.votes_number = 0
-        self.damaged_by = set()
-        self.damaged_by_characters = set()
-
-        self.caused_damage = set()
-        self.killed = set()
-
         self.next_step_effects = []
-        self.action_queue = []
-        self.last_played_time = {}  # Action -> (day_num, turn_id)
-        self.game = None
 
     # Passive effects #####################################################
 
     @check_effects
     def receive_damage(self, strength, type, action):
         if strength > 0:
-            self.damaged_by.add(type)
+            if type not in self.damaged_by: self.damaged_by.append(type)
             self.health -= strength
             self.game.log(DamageEvent(self, strength, type, action))
             if action.executor:
-                self.damaged_by_characters.add(action.executor)
+                self.damaged_by_characters.append(action.executor)
                 action.executor.on_cause_damage(self)
 
     @property
@@ -93,9 +103,9 @@ class Character:
         self.health = min(self.health + strength, self.max_health)
         if strength > 0:
             if DamageType.BLOODY_MESS in self.damaged_by:
-                self.damaged_by = {DamageType.BLOODY_MESS}
+                self.damaged_by = [DamageType.BLOODY_MESS]
             else:
-                self.damaged_by = set()
+                self.damaged_by = list()
 
     @check_effects
     def add_votes(self, number):
@@ -173,7 +183,7 @@ class Character:
             return False
         # Check cooldown
         played_day, played_turn = (
-            self.last_played_time.get(action.__class__, (0, 0)))
+            self.ability_played_time.get(action.name, (0, 0)))
         time_passed = (self.game.day_num - played_day, self.game.turn_id - played_turn)
         if time_passed <= (action.cooldown, 1):
             return False
@@ -184,14 +194,14 @@ class Character:
         return action.can_play_check(self)
 
     def set_action_played(self, action, game):
-        self.last_played_time[action.__class__] = (game.day_num, game.turn_id)
+        self.ability_played_time[action.name] = (game.day_num, game.turn_id)
         if action.mana_cost is not None:
             self.mana -= action.mana_cost
 
     @check_effects
     def on_turn_start(self, turn):
         if isinstance(turn, NightTurn):
-            self.damaged_by_characters = set()
+            self.damaged_by_characters = list()
 
     @check_effects
     def on_turn_end(self, turn):
@@ -199,11 +209,13 @@ class Character:
 
     @check_effects
     def on_cause_damage(self, character):
-        self.caused_damage.add(character)
+        if character not in self.caused_damage:
+            self.caused_damage.append(character)
 
     @check_effects
     def on_kill(self, character):
-        self.killed.add(character)
+        if character not in self.killed:
+            self.killed.append(character)
 
     @check_effects
     def can_win(self):

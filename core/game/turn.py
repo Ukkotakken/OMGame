@@ -3,13 +3,15 @@ import random
 from core.game.common import State, Step, TurnType
 from core.game.events.common import ActionPlayedEvent
 from core.game.victory import check_victory
+from core.mongo.documents import TurnDocument
 
 
-class Turn:
+class Turn(TurnDocument):
     STEP_ORDER = []
 
     def __init__(self, turn_info):
-        self.actions = {phase: [] for phase in self.STEP_ORDER}
+        super().__init__(
+            actions= {phase: [] for phase in self.STEP_ORDER})
         self.turn_info = turn_info
 
     def add_action(self, action):
