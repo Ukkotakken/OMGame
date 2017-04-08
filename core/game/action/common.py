@@ -1,17 +1,15 @@
 import inspect
 from abc import ABCMeta, abstractmethod
 
+from mongoengine.fields import ReferenceField, EmbeddedDocumentListField, ListField
+
 from core.game.action.arguments import CharacterArgument
 from core.game.common import Step
 from core.game.events.common import VoteEvent
+from core.mongo.documents import CharacterDocument, ActionDocument, EffectDocument
 
 
-class ActionBase:
-    def __init__(self, caller, executor, target):
-        self.caller = caller
-        self.executor = executor
-        self.target = target
-
+class ActionBase(ActionDocument):
     __hash__ = None
 
     def __eq__(self, other):
@@ -25,7 +23,6 @@ class Action(ActionBase):
     cooldown = 0
     can_cancel = True
     arguments = []
-
 
     @property
     def turn_step(self):
@@ -93,6 +90,9 @@ class BaseAttack(Action):
 
 
 class ApplyEffectAction(Action):
+    stored_effects = EmbeddedDocumentListField(EffectDocument)
+    targets = ListField(ReferenceField(CharacterDocument))
+
     # Effects in format (class, kw_mapping, target, defaults)
     @property
     def effects(self):
@@ -123,11 +123,12 @@ class ApplyEffectAction(Action):
                 if k not in kw:
                     kw[k] = defaults[k]
             bind = effect_signature.bind(**kw)
-            self.target_and_effect.append((kwargs.get(effect_target), effect(*bind.args, **bind.kwargs)))
+            self.targets.append(kwargs.get(effect_target))
+            self.stored_effects.append(effect(*bind.args, **bind.kwargs))
         del self.kwargs['self']
 
     def play(self, game):
-        for target, effect in self.target_and_effect:
+        for target, effect in zip(self.targets, self.stored_effects):
             target.add_effect(effect)
 
     def __eq__(self, other):

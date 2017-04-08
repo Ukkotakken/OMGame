@@ -1,19 +1,20 @@
-from core.game.events.common import Event
+from mongoengine.fields import ReferenceField, EmbeddedDocumentListField
+
+from core.game.events.common import Event, DamageEvent
+from core.mongo.documents import CharacterDocument
 
 
 class AwarenessEvent(Event):
-    def __init__(self, character, damage_effects):
-        self.character = character
-        self.damage_effects = damage_effects
+    character = ReferenceField(CharacterDocument)
+    damage_events = EmbeddedDocumentListField(DamageEvent)
 
     def play(self, game_handler):
         pass
 
 
 class InvestigationEvent(Event):
-    def __init__(self, character, target):
-        self.character = character
-        self.target = target
+    character = ReferenceField(CharacterDocument)
+    target = ReferenceField(CharacterDocument)
 
     def play(self, game_handler):
         pass

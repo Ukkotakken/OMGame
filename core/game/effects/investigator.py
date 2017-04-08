@@ -12,9 +12,9 @@ class AwarenessEffect(CharacterEffect):
 
     def on_turn_start(self, character, turn):
         if turn.__class__ is DayTurn:
-            damage_effects = [e for e in character.game.new_events
+            damage_events = [e for e in character.game.new_events
                               if e.__class__ is DamageEvent]
-            character.game.log(AwarenessEvent(character, damage_effects))
+            character.game.log(AwarenessEvent(character, damage_events))
         character.on_turn_start(turn)
 
 

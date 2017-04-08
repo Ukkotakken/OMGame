@@ -3,6 +3,9 @@ from collections import defaultdict
 from typing import List
 from unittest.mock import MagicMock
 
+import mongoengine
+
+from core.bot.game_handler import GameHandler
 from core.game.action.common import Vote, BaseAttack
 from core.game.characters.common import Character
 from core.game.common import State, DamageType
@@ -14,10 +17,16 @@ from core.game.turn import DayTurn, NightTurn
 
 
 class GameTestBase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        mongoengine.connect('testmongo', host='mongomock://localhost')
+
     def setUp(self):
+        self.game_handler = GameHandler()
+        self.game_handler.bot = MagicMock()
         if not hasattr(self, 'chars'):
             self.chars = []
-        self.game = Game(self.chars, MagicMock())
+        self.game = Game(characters=self.chars, game_handler=self.game_handler)
 
     def next_turn_skip_events(self):
         self.game.play_and_start_new_turn()
@@ -55,7 +64,7 @@ class GameBasicsTest(GameTestBase):
             Character(MagicMock())]
         self.alice = self.chars[0]
         self.bob = self.chars[1]
-        self.game = Game(self.chars, MagicMock())
+        super().setUp()
 
     def actionQuery_cleared(self):
         self.next_turn_no_events()
@@ -72,9 +81,6 @@ class GameBasicsTest(GameTestBase):
         self.next_turn_no_events()
         self.game.play_turn()
         self.assertEventsEqual(self.game.pop_new_events(), [])
-
-
-
 
     def testAttack_failDay(self):
         try:

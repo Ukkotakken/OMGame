@@ -1,8 +1,11 @@
+from mongoengine.fields import ReferenceField, ListField, EmbeddedDocumentListField, IntField
+
 from core.game.events.common import TurnEndEvent, TurnStartEvent, InstantEvent
 from core.game.turn import DayTurn, NightTurn
+from core.mongo.documents import GameHandlerDocument, CharacterDocument, GameDocument, EventDocument, TurnDocument
 
 
-class Game:
+class Game(GameDocument):
     """Workflow:
 
     0. start_new_turn is called.
@@ -25,22 +28,23 @@ class Game:
     Special effect caller.
     """
 
+    game_handler = ReferenceField(GameHandlerDocument)
+    characters = ListField(ReferenceField(CharacterDocument))
+    event_log = EmbeddedDocumentListField(EventDocument)
+    new_events = EmbeddedDocumentListField(EventDocument)
+    day_num = IntField(default=0)
+    turn_id = IntField()
+    turn = ReferenceField(TurnDocument)
+
     TURN_ORDER = [DayTurn, NightTurn]
 
     def __init__(self, characters, game_handler, turn_type_generator=None):
-        self.game_handler = game_handler
+        super().__init__(characters=characters, game_handler=game_handler)
+        self.turn_id = len(self.TURN_ORDER) - 1
 
-        self.characters = characters
-        self.player_characters = {c.player.user_id: c for c in characters}
         for c in characters:
             c.game = self
 
-        self.event_log = []
-        self.new_events = []
-
-        self.day_num = 0
-        self.turn_id = len(self.TURN_ORDER) - 1
-        self.turn = None
         self.start_new_turn()
 
     def log(self, event):
@@ -81,7 +85,7 @@ class Game:
         self.game_handler.send_message(text)
 
     def over(self):
-        self.game_handler.over()
+        self.game_handler.end_game()
 
     def apply_effects_turn_end(self):
         for character in self.characters:

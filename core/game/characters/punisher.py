@@ -10,9 +10,9 @@ class Punisher(Character):
     start_health = 3
     start_max_health = 3
     start_mana = 1
-    role_base_attack = 1
-    role_vote_strength = 1
-    role_attack_type = DamageType.PHISICAL
+    base_attack = 1
+    vote_strength = 1
+    attack_type = DamageType.PHISICAL
     role_abilities_list = [
         Punishment,
         Bloodhound]

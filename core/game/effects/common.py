@@ -1,5 +1,8 @@
+from mongoengine.fields import IntField
+
 from core.game.effects.priorities import EffectPriority
 from core.game.turn import DayTurn
+from core.mongo.documents import EffectDocument
 
 
 def pipe_argument(*args, **kwargs):
@@ -10,7 +13,9 @@ def pipe_value(value):
     return value, None
 
 
-class CharacterEffect:
+class CharacterEffect(EffectDocument):
+    meta = {'allow_inheritance': True}
+
     @property
     def priority(self):
         raise NotImplementedError("CharacterEffect subclasses should have priority setted!")
@@ -23,7 +28,10 @@ class CharacterEffect:
 
 
 class TimedCharacterEffect(CharacterEffect):
+    turns = IntField()
+
     def __init__(self, turns=None):
+        super().__init__()
         self.turns = turns
 
     def on_turn_start(self, character, turn):
@@ -39,6 +47,7 @@ class ReceiveManaEffect(CharacterEffect):
     priority = EffectPriority.RECEIVE_MANA_PRIORITY
 
     def __init__(self, mana_table):
+        super().__init__()
         """mana_table is a dict turn_type -> mana_amount"""
         self.mana_table = mana_table
 

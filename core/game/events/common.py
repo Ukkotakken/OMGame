@@ -1,4 +1,9 @@
-class Event:
+from mongoengine.fields import ReferenceField, FloatField, StringField, ListField
+
+from core.mongo.documents import EventDocument, CharacterDocument, ActionDocument, TurnDocument
+
+
+class Event(EventDocument):
     def play(self, game_handler):
         pass
 
@@ -9,8 +14,7 @@ class Event:
 
 
 class DeathEvent(Event):
-    def __init__(self, character):
-        self.character = character
+    character = ReferenceField(CharacterDocument)
 
     def play(self, game_handler):
         game_handler.send_message("%s is dead!" % self.character.name)
@@ -18,8 +22,7 @@ class DeathEvent(Event):
 
 
 class ImprisonEvent(Event):
-    def __init__(self, character):
-        self.character = character
+    character = ReferenceField(CharacterDocument)
 
     def play(self, game_handler):
         game_handler.send_message("%s is sent to prison!" % self.character.name)
@@ -27,22 +30,19 @@ class ImprisonEvent(Event):
 
 
 class DamageEvent(Event):
-    def __init__(self, character, strength, type, action):
-        self.character = character
-        self.strength = strength
-        self.type = type
-        self.action = action
+    character = ReferenceField(CharacterDocument)
+    strength = FloatField()
+    type = StringField()
+    action = ReferenceField(ActionDocument)
 
 
 class ActionPlayedEvent(Event):
-    def __init__(self, action):
-        self.action = action
+    action = ReferenceField(ActionDocument)
 
 
 class VictoryEvent(Event):
-    def __init__(self, side, characters):
-        self.side = side
-        self.characters = characters
+    side = StringField()
+    characters = ListField(ReferenceField(CharacterDocument))
 
     def play(self, game_handler):
         coalition = ', '.join(c.name for c in self.characters)
@@ -52,8 +52,7 @@ class VictoryEvent(Event):
 
 
 class TurnStartEvent(Event):
-    def __init__(self, turn):
-        self.turn = turn
+    turn = ReferenceField(TurnDocument)
 
     def play(self, game_handler):
         game_handler.send_message("%s starts!" % self.turn.NAME)
@@ -63,25 +62,21 @@ class TurnStartEvent(Event):
 
 
 class TurnEndEvent(Event):
-    def __init__(self, turn):
-        self.turn = turn
+    turn = ReferenceField(TurnDocument)
 
     def play(self, game_handler):
         game_handler.send_message("%s is ended!" % self.turn.NAME)
 
 
 class VoteEvent(Event):
-    def __init__(self, vote_action):
-        self.vote_action = vote_action
-
+    vote_action = ReferenceField(ActionDocument)
 
 class InstantEvent(Event):
     pass
 
 
 class VoteInstantEvent(InstantEvent):
-    def __init__(self, vote_action):
-        self.vote_action = vote_action
+    vote_action = ReferenceField(ActionDocument)
 
     def play(self, game_handler):
         game_handler.send_message(

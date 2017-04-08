@@ -1,11 +1,13 @@
+from mongoengine.fields import StringField, ReferenceField
+
 from core.game.common import TurnType
 from core.game.events.common import Event
+from core.mongo.documents import CharacterDocument
 
 
 class SendTurnTypeEvent(Event):
-    def __init__(self, character, turn_type):
-        self.character = character
-        self.turn_type = turn_type
+    character = ReferenceField(CharacterDocument)
+    turn_type = StringField()
 
     def play(self, game_handler):
         if self.turn_type is TurnType.DIVINE_POWER:
